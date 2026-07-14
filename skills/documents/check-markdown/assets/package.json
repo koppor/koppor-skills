@@ -1,0 +1,13 @@
+{
+  "name": "check-markdown-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned textlint toolchain for the check-markdown skill (textlint + rules + LanguageTool bridge).",
+  "license": "MIT",
+  "devDependencies": {
+    "textlint": "^15.7.1",
+    "textlint-rule-terminology": "^5.2.16",
+    "textlint-rule-write-good": "^2.0.0",
+    "@textlint-rule/textlint-rule-gramma": "^1.0.2"
+  }
+}

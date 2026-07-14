@@ -1,0 +1,18 @@
+# Node / textlint toolchain
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Vale styles are vendored (committed) for offline, reproducible runs — not ignored.
+
+# Generated effective configs
+skills/**/assets/.textlintrc.*.json
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+
+# CodeGraph index (local, not project content)
+.codegraph/
+.code-review-graph/

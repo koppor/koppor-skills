@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "terminology": {
+      "defaultTerms": true
+    },
+    "write-good": true,
+    "@textlint-rule/gramma": {
+      "api_url": "http://localhost:8081/v2/check"
+    }
+  }
+}
