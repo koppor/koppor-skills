@@ -125,7 +125,8 @@ Unnecessary on macOS and Windows Docker Desktop.
 
 Extract the actual error from `foo.log`: search for lines starting with
 `! ` together with the `l.<n>` line reference. Show that; do not paste the
-full log.
+full log. For a filtered summary use
+[`read-tex-log`](../read-tex-log/SKILL.md) (`texlogsieve`).
 
 ## Housekeeping
 

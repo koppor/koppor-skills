@@ -13,6 +13,7 @@ written to be agent-agnostic and reusable by anyone.
 | `documents` | [`check-markdown`](skills/documents/check-markdown/SKILL.md) | Lint Markdown prose with **Vale**, **textlint**, and **LanguageTool**, then apply the findings as targeted edits. |
 | `documents` | [`check-tex`](skills/documents/check-tex/SKILL.md) | Lint LaTeX prose with **textlint** (latex2e); pairs with **ltex-cli** for grammar. |
 | `tex` | [`compile-tex`](skills/tex/compile-tex/SKILL.md) | Compile LaTeX / plain TeX / ConTeXt to PDF via the `texlive/texlive` Docker image. |
+| `tex` | [`read-tex-log`](skills/tex/read-tex-log/SKILL.md) | Summarize LaTeX `.log` files (errors, boxes, undefined refs/cites) with **texlogsieve**. |
 | `jabref` | _(planned)_ | BibTeX/biblatex management, `jabkit`, PDF → BibTeX. |
 | `research` | _(planned)_ | Literature and research-workflow helpers. |
 
