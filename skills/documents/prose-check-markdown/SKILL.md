@@ -45,7 +45,7 @@ Prerequisites:
   Details and alternatives (local `.jar`): [languagetool.md](references/languagetool.md).
 - **typos** — common misspellings, also in code spans and comments. Optional: taken from
   `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
-  skipped. It knows English only; a repository's `_typos.toml` (excluded files, allowed
+  skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
   words) applies, also to files named on the command line.
   - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
   - macOS: `brew install typos-cli`
@@ -121,7 +121,7 @@ and triage by severity and kind, not by blindly applying every suggestion.
 
 - **`error` → apply.** Grammar/agreement from LanguageTool, spelling from `Vale.Spelling`,
   typos, and aspell (except in non-English text — typos knows English only). Add real
-  words to the repository's word list (`_typos.toml`, `.aspell.<lang>.pws`).
+  words to the repository's word list (`.typos.toml`, `.aspell.<lang>.pws`).
   Fix these in the source with the Edit tool.
 - **`warning` → judgment call.** `write-good` (passive voice, weasel words, "so"/"just"),
   `terminology`, proselint, and markdownlint (structure: fix it unless the repository's
