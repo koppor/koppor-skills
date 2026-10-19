@@ -1,6 +1,6 @@
 # LanguageTool setup
 
-The `check-markdown` skill runs LanguageTool through textlint's
+The `prose-check-markdown` skill runs LanguageTool through textlint's
 `@textlint-rule/gramma` rule, which POSTs to a LanguageTool HTTP endpoint's
 `/v2/check`. The runner ([`../scripts/check-md.mjs`](../scripts/check-md.mjs)) resolves
 the endpoint in this order:
@@ -66,7 +66,7 @@ A JSON response with a `matches` array means the server is up.
 
 ## LaTeX
 
-For grammar checking on `.tex`, see the [`check-tex`](../../check-tex/SKILL.md) skill —
+For grammar checking on `.tex`, see the [`prose-check-tex`](../../prose-check-tex/SKILL.md) skill —
 `@textlint-rule/gramma` crashes on the LaTeX AST, so LaTeX uses
 [`ltex-cli`](https://github.com/valentjn/ltex-ls) (LanguageTool with a native LaTeX parser)
 instead.

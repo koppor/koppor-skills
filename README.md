@@ -10,8 +10,8 @@ written to be agent-agnostic and reusable by anyone.
 
 | Category | Skill | What it does |
 | --- | --- | --- |
-| `documents` | [`check-markdown`](skills/documents/check-markdown/SKILL.md) | Lint Markdown prose with **Vale**, **textlint**, **LanguageTool**, and **typos**, then apply the findings as targeted edits. |
-| `documents` | [`check-tex`](skills/documents/check-tex/SKILL.md) | Lint LaTeX prose with **TeXtidote**, **textlint** (latex2e), and **typos**, then apply the findings as targeted edits. |
+| `documents` | [`prose-check-markdown`](skills/documents/prose-check-markdown/SKILL.md) | Check Markdown prose with **Vale**, **textlint**, **LanguageTool**, **typos**, **aspell**, and **markdownlint**, then report the findings or apply them as targeted edits. |
+| `documents` | [`prose-check-tex`](skills/documents/prose-check-tex/SKILL.md) | Check LaTeX prose with **TeXtidote**, **textlint** (latex2e), **typos**, and **aspell**, then report the findings or apply them as targeted edits. |
 | `documents` | [`prose-checks-ci`](skills/documents/prose-checks-ci/SKILL.md) | Set up spell checking and prose linting of LaTeX and Markdown in **GitHub Actions** with **aspell**, **TeXtidote**, **textlint**, **Vale**, **typos**, and **markdownlint**. |
 | `tex` | [`compile-tex`](skills/tex/compile-tex/SKILL.md) | Compile LaTeX / plain TeX / ConTeXt to PDF via the `texlive/texlive` Docker image. |
 | `tex` | [`read-tex-log`](skills/tex/read-tex-log/SKILL.md) | Summarize LaTeX `.log` files (errors, boxes, undefined refs/cites) with **texlogsieve**. |
@@ -23,7 +23,7 @@ written to be agent-agnostic and reusable by anyone.
 These are plain skill folders — use whichever fits your setup:
 
 - **Copy into Claude Code** — drop a skill directory into `~/.claude/skills/`, e.g.
-  `~/.claude/skills/check-markdown/`. Claude discovers it on the next session.
+  `~/.claude/skills/prose-check-markdown/`. Claude discovers it on the next session.
 - **skills CLI** — install the whole repo and let telemetry index it:
 
   ```sh

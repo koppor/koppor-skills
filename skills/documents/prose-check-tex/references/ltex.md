@@ -1,6 +1,6 @@
 # Grammar checking for LaTeX with `ltex-cli`
 
-`check-tex` handles style and terminology. For **grammar, agreement, and spelling** on
+`prose-check-tex` handles style and terminology. For **grammar, agreement, and spelling** on
 LaTeX, use [`ltex-ls`](https://github.com/valentjn/ltex-ls) (active fork:
 [`ltex-ls-plus`](https://github.com/ltex-plus/ltex-ls-plus)) — LanguageTool wrapped in a
 purpose-built LaTeX parser. It succeeds exactly where `@textlint-rule/gramma` crashes.
@@ -35,7 +35,7 @@ ConTeXt, Org, reStructuredText, and R Sweave.
   [`check-tex.mjs`](../scripts/check-tex.mjs) emits — run it as a separate grammar pass and
   apply its findings by hand.
 - It builds on a LanguageTool engine but bundles its own; you do **not** need the Docker
-  server that the [`check-markdown`](../../check-markdown/references/languagetool.md) skill
+  server that the [`prose-check-markdown`](../../prose-check-markdown/references/languagetool.md) skill
   uses.
 - Custom macros can still confuse the parser; add them to an `ltex` settings file if a
   command's argument is mis-read as prose.

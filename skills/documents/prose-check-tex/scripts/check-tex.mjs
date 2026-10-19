@@ -4,10 +4,10 @@
 //
 // Usage:  node check-tex.mjs <file-or-dir> [more files/dirs...]
 //
-// Findings shape (matches the check-markdown skill):
+// Findings shape (matches the prose-check-markdown skill):
 //   { file, line, column, severity, source, rule, message, fixable }
 //     severity : "error" | "warning" | "suggestion"
-//     source   : "textlint" | "textidote" | "typos"
+//     source   : "textlint" | "textidote" | "typos" | "aspell"
 //
 // Why LaTeX is its own skill:
 //   - Vale has no LaTeX parser (errata-ai/vale#54) — it would flag markup as prose.
@@ -15,7 +15,8 @@
 // So this skill checks style/terminology via textlint's `latex2e` parser, which lints only
 // prose nodes and ignores commands/math. TeXtidote (LanguageTool on the LaTeX source,
 // plus LaTeX style rules) checks spelling and grammar; it runs from PATH or in the
-// danteev/texlive Docker image. typos finds misspellings, also in comments.
+// danteev/texlive Docker image. typos finds misspellings, also in comments. aspell checks
+// spelling with the repository's word list, as in CI (see the prose-checks-ci skill).
 // For more grammar checking, `ltex-cli` — see references/ltex.md.
 //
 // Exit codes: 0 = clean, 1 = findings reported, 2 = setup/tool failure.
@@ -36,7 +37,7 @@ const TEX_EXT = new Set(['.tex', '.latex', '.ltx']);
 const TEXTLINT_STYLE_RULES = new Set(['write-good', 'terminology']);
 
 let hadToolError = false;
-const warn = (msg) => process.stderr.write(`check-tex: ${msg}\n`);
+const warn = (msg) => process.stderr.write(`prose-check-tex: ${msg}\n`);
 
 function run(cmd, args, opts = {}) {
   const res = spawnSync(cmd, args, {
@@ -178,6 +179,75 @@ function runTypos(file) {
   return findings;
 }
 
+// ── aspell ───────────────────────────────────────────────────────────────────
+// http://aspell.net checks spelling against a dictionary per language, as the CI setup of
+// the prose-checks-ci skill does. Taken from PATH, else from the danteev/texlive Docker
+// image (ASPELL_IMAGE). The repository's .aspell.conf (add-tex-command ...) and word list
+// .aspell.<lang>.pws apply, so local and CI findings match.
+const aspellImage = process.env.ASPELL_IMAGE || 'danteev/texlive:latest';
+let aspellMode;
+function resolveAspell() {
+  if (aspellMode !== undefined) return aspellMode;
+  if (commandExists('aspell')) aspellMode = 'path';
+  else if (commandExists('docker')) aspellMode = 'docker';
+  else aspellMode = null;
+  return aspellMode;
+}
+
+function findRepoRoot(file) {
+  let dir = dirname(file);
+  for (;;) {
+    if (existsSync(join(dir, '.git'))) return dir;
+    if (dirname(dir) === dir) return dirname(file);
+    dir = dirname(dir);
+  }
+}
+
+// lang: two-letter code, e.g., "en" or "de"; filterMode: aspell's "tex" or "markdown" filter
+function runAspell(file, text, lang, filterMode) {
+  const mode = resolveAspell();
+  if (!mode) return [];
+  const root = findRepoRoot(file);
+  const dict = { en: 'en_US', de: 'de_DE' }[lang] || lang;
+  const args = ['-a', `--mode=${filterMode}`, '-l', dict, '--encoding=utf-8'];
+  if (lang === 'de') args.push('--run-together'); // German compounds
+  if (existsSync(join(root, '.aspell.conf'))) args.push('--conf=./.aspell.conf');
+  if (existsSync(join(root, `.aspell.${lang}.pws`))) args.push('-p', `./.aspell.${lang}.pws`);
+  // Pipe mode: "!" reports only misspellings; "^" makes each line plain text; aspell ends
+  // the output of each input line with an empty line
+  const input = '!\n' + text.split('\n').map((l) => `^${l}`).join('\n') + '\n';
+  const user = isWin ? [] : ['-u', `${process.getuid()}:${process.getgid()}`];
+  const res = mode === 'path'
+    ? runBin('aspell', args, { cwd: root, input })
+    : runBin('docker', ['run', '--rm', '-i', ...user, '-e', 'HOME=/tmp', '-v', `${root}:/w`, '-w', '/w',
+      aspellImage, 'aspell', ...args], { cwd: root, input });
+  if (!res.ok) {
+    warn(`aspell failed on ${file}: ${res.stderr.trim().split('\n').slice(-3).join(' ') || 'no output'}`);
+    hadToolError = true;
+    return [];
+  }
+  const findings = [];
+  let line = 1;
+  for (const out of res.stdout.split('\n').slice(1)) {
+    if (out === '') { line++; continue; }
+    // "& <word> <count> <offset>: <suggestions>" or "# <word> <offset>"; the offset counts the "^"
+    const m = out.match(/^[&#] (\S+) (?:\d+ )?(\d+)(?:: (.*))?$/);
+    if (!m) continue;
+    const suggestions = m[3] ? m[3].split(', ').slice(0, 5) : [];
+    findings.push({
+      file,
+      line,
+      column: Number(m[2]),
+      severity: 'error',
+      source: 'aspell',
+      rule: `aspell-${dict}`,
+      message: `"${m[1]}" is not in the ${dict} dictionary${suggestions.length ? `; suggestions: ${suggestions.join(', ')}` : ''}`,
+      fixable: false,
+    });
+  }
+  return findings;
+}
+
 // ── TeXtidote ────────────────────────────────────────────────────────────────
 // https://github.com/sylvainhalle/textidote runs LanguageTool on LaTeX (spelling, grammar)
 // and adds LaTeX style rules (sh:*). Taken from PATH, else from the danteev/texlive Docker
@@ -220,7 +290,7 @@ function textidoteSeverity(rule) {
 
 // TeXtidote 0.9's JSON has the rule IDs, but its offsets point to the start of the line;
 // the singleline output has the exact positions. Both list the matches in the same order.
-const SEPARATOR = '@@check-tex@@';
+const SEPARATOR = '@@prose-check-tex@@';
 const SINGLELINE = /\(L(\d+)C(\d+)-L\d+C\d+\): /;
 
 function runTextidote(file) {
@@ -290,7 +360,7 @@ function main() {
 
   const files = collectFiles(paths);
   if (files.length === 0) {
-    warn('no LaTeX (.tex/.latex/.ltx) files found. For Markdown, use the check-markdown skill.');
+    warn('no LaTeX (.tex/.latex/.ltx) files found. For Markdown, use the prose-check-markdown skill.');
     process.exit(2);
   }
 
@@ -298,12 +368,15 @@ function main() {
 
   if (!resolveTextidote()) warn('TeXtidote not found (PATH, Docker) — spelling and grammar are not checked by TeXtidote.');
   if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx) — misspellings are not checked by typos.');
+  if (!resolveAspell()) warn('aspell not found (PATH, Docker) — spelling is not checked by aspell.');
 
   const findings = [];
   for (const file of files) {
     findings.push(...runTextlint(file));
     findings.push(...runTextidote(file));
     findings.push(...runTypos(file));
+    const text = readFileSync(file, 'utf8');
+    findings.push(...runAspell(file, text, detectLanguage(text), 'tex'));
   }
 
   findings.sort((a, b) =>
@@ -317,8 +390,8 @@ function main() {
   warn(`  by source:   ${fmt(tally('source'))}`);
   warn(`  by severity: ${fmt(tally('severity'))}`);
 
-  if (hadToolError) process.exit(2);
-  process.exit(findings.length > 0 ? 1 : 0);
+  // exitCode, not exit(): exit() would end the process before a piped stdout is flushed
+  process.exitCode = hadToolError ? 2 : findings.length > 0 ? 1 : 0;
 }
 
 main();

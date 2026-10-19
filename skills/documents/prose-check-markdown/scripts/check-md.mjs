@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// check-md.mjs — Lint Markdown with textlint + Vale (+ LanguageTool) and emit a single
+// check-md.mjs — Lint Markdown with textlint + Vale (+ LanguageTool), typos, aspell, and
+// markdownlint and emit a single
 // merged JSON array of findings on stdout, a human summary on stderr.
 //
 // Usage:  node check-md.mjs <file-or-dir> [more files/dirs...]
@@ -7,7 +8,7 @@
 // Findings are normalized to one shape:
 //   { file, line, column, severity, source, rule, message, fixable }
 //     severity : "error" | "warning" | "suggestion"
-//     source   : "textlint" | "vale" | "languagetool" | "typos"
+//     source   : "textlint" | "vale" | "languagetool" | "typos" | "aspell" | "markdownlint"
 //
 // Severity policy (see normalizeSeverity): grammar (LanguageTool) and spelling
 // (Vale.Spelling) stay `error`; wordiness/style (write-good, terminology, proselint)
@@ -18,14 +19,14 @@
 // neither works the grammar rule is dropped and the run continues (textlint + Vale). Text
 // is never sent to a remote host unless you explicitly point LANGUAGETOOL_URL at one.
 //
-// For LaTeX (.tex) use the sibling `check-tex` skill — Vale cannot parse LaTeX and the
+// For LaTeX (.tex) use the sibling `prose-check-tex` skill — Vale cannot parse LaTeX and the
 // gramma rule crashes on the LaTeX AST.
 //
 // Exit codes: 0 = clean, 1 = findings reported, 2 = setup/tool failure.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +47,7 @@ const GRAMMA_KEY = '@textlint-rule/gramma';
 let hadToolError = false;
 
 function warn(msg) {
-  process.stderr.write(`check-md: ${msg}\n`);
+  process.stderr.write(`prose-check-markdown: ${msg}\n`);
 }
 
 function isRemoteHost(url) {
@@ -92,10 +93,11 @@ function commandExists(cmd) {
 
 // Install the pinned textlint toolchain on first use.
 function ensureNodeModules() {
-  if (existsSync(join(assetsDir, 'node_modules')) && existsSync(textlintBin)) return true;
+  // markdownlint-cli2 is checked, too: an install from before it was added lacks it
+  if (existsSync(textlintBin) && existsSync(markdownlintBin)) return true;
   warn('textlint dependencies missing — running `npm install` (one-time)...');
   const res = runBin('npm', ['install', '--no-audit', '--no-fund'], { cwd: assetsDir, stdio: ['ignore', 2, 2] });
-  if (!res.ok || !existsSync(textlintBin)) {
+  if (!res.ok || !existsSync(textlintBin) || !existsSync(markdownlintBin)) {
     warn(`npm install failed — run it manually:  npm install --prefix "${assetsDir}"`);
     return false;
   }
@@ -331,6 +333,119 @@ function runTypos(file) {
   return findings;
 }
 
+// ── aspell ───────────────────────────────────────────────────────────────────
+// http://aspell.net checks spelling against a dictionary per language, as the CI setup of
+// the prose-checks-ci skill does. Taken from PATH, else from the danteev/texlive Docker
+// image (ASPELL_IMAGE). The repository's .aspell.conf (add-tex-command ...) and word list
+// .aspell.<lang>.pws apply, so local and CI findings match.
+const aspellImage = process.env.ASPELL_IMAGE || 'danteev/texlive:latest';
+let aspellMode;
+function resolveAspell() {
+  if (aspellMode !== undefined) return aspellMode;
+  if (commandExists('aspell')) aspellMode = 'path';
+  else if (commandExists('docker')) aspellMode = 'docker';
+  else aspellMode = null;
+  return aspellMode;
+}
+
+function findRepoRoot(file) {
+  let dir = dirname(file);
+  for (;;) {
+    if (existsSync(join(dir, '.git'))) return dir;
+    if (dirname(dir) === dir) return dirname(file);
+    dir = dirname(dir);
+  }
+}
+
+// lang: two-letter code, e.g., "en" or "de"; filterMode: aspell's "tex" or "markdown" filter
+function runAspell(file, text, lang, filterMode) {
+  const mode = resolveAspell();
+  if (!mode) return [];
+  const root = findRepoRoot(file);
+  const dict = { en: 'en_US', de: 'de_DE' }[lang] || lang;
+  const args = ['-a', `--mode=${filterMode}`, '-l', dict, '--encoding=utf-8'];
+  if (lang === 'de') args.push('--run-together'); // German compounds
+  if (existsSync(join(root, '.aspell.conf'))) args.push('--conf=./.aspell.conf');
+  if (existsSync(join(root, `.aspell.${lang}.pws`))) args.push('-p', `./.aspell.${lang}.pws`);
+  // Pipe mode: "!" reports only misspellings; "^" makes each line plain text; aspell ends
+  // the output of each input line with an empty line
+  const input = '!\n' + text.split('\n').map((l) => `^${l}`).join('\n') + '\n';
+  const user = isWin ? [] : ['-u', `${process.getuid()}:${process.getgid()}`];
+  const res = mode === 'path'
+    ? runBin('aspell', args, { cwd: root, input })
+    : runBin('docker', ['run', '--rm', '-i', ...user, '-e', 'HOME=/tmp', '-v', `${root}:/w`, '-w', '/w',
+      aspellImage, 'aspell', ...args], { cwd: root, input });
+  if (!res.ok) {
+    warn(`aspell failed on ${file}: ${res.stderr.trim().split('\n').slice(-3).join(' ') || 'no output'}`);
+    hadToolError = true;
+    return [];
+  }
+  const findings = [];
+  let line = 1;
+  for (const out of res.stdout.split('\n').slice(1)) {
+    if (out === '') { line++; continue; }
+    // "& <word> <count> <offset>: <suggestions>" or "# <word> <offset>"; the offset counts the "^"
+    const m = out.match(/^[&#] (\S+) (?:\d+ )?(\d+)(?:: (.*))?$/);
+    if (!m) continue;
+    const suggestions = m[3] ? m[3].split(', ').slice(0, 5) : [];
+    findings.push({
+      file,
+      line,
+      column: Number(m[2]),
+      severity: 'error',
+      source: 'aspell',
+      rule: `aspell-${dict}`,
+      message: `"${m[1]}" is not in the ${dict} dictionary${suggestions.length ? `; suggestions: ${suggestions.join(', ')}` : ''}`,
+      fixable: false,
+    });
+  }
+  return findings;
+}
+
+// aspell's Markdown filter does not know LaTeX in Markdown (\LaTeX{}, <#sec:x>, {#sec:x});
+// blank it out with spaces, so the columns stay right
+const stripLatex = (text) => text.replace(/\\[A-Za-z]+|<#[^>]*>|\{#[^}]*\}/g, (m) => ' '.repeat(m.length));
+
+// ── markdownlint ─────────────────────────────────────────────────────────────
+// https://github.com/DavidAnson/markdownlint-cli2 checks the Markdown structure (headings,
+// lists, blank lines). It runs in the repository root, so the repository's .markdownlint*
+// configuration applies; without one, assets/markdownlint.jsonc turns off the line length.
+const markdownlintBin = join(assetsDir, 'node_modules', 'markdownlint-cli2', 'markdownlint-cli2-bin.mjs');
+const MARKDOWNLINT_CONFIGS = ['.markdownlint-cli2.jsonc', '.markdownlint-cli2.yaml', '.markdownlint-cli2.cjs',
+  '.markdownlint-cli2.mjs', '.markdownlint.jsonc', '.markdownlint.json', '.markdownlint.yaml', '.markdownlint.yml',
+  '.markdownlint.cjs', '.markdownlint.mjs'];
+
+function runMarkdownlint(file) {
+  const root = findRepoRoot(file);
+  const hasConfig = MARKDOWNLINT_CONFIGS.some((c) => existsSync(join(root, c)));
+  const rel = relative(root, file).split(sep).join('/');
+  const args = [markdownlintBin, ...(hasConfig ? [] : ['--config', join(assetsDir, 'markdownlint.jsonc')]), `:${rel}`];
+  const res = run(process.execPath, args, { cwd: root });
+  // Exit code 1 means "issues found"
+  if (res.status !== 0 && res.status !== 1) {
+    warn(`markdownlint failed on ${file}: ${res.stderr.trim().split('\n').slice(-3).join(' ') || 'no output'}`);
+    hadToolError = true;
+    return [];
+  }
+  const findings = [];
+  // "<file>:<line>[:<column>] error <rule>/<alias> <description> [<detail>] [Context: ...]"
+  for (const out of res.stderr.split('\n')) {
+    const m = out.match(/^(.+?):(\d+)(?::(\d+))? (?:error|warning) (\S+) (.*)$/);
+    if (!m) continue;
+    findings.push({
+      file,
+      line: Number(m[2]),
+      column: m[3] ? Number(m[3]) : null,
+      severity: 'warning',
+      source: 'markdownlint',
+      rule: m[4],
+      message: m[5].trim(),
+      fixable: false,
+    });
+  }
+  return findings;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const paths = process.argv.slice(2);
@@ -341,7 +456,7 @@ async function main() {
 
   const files = collectFiles(paths);
   if (files.length === 0) {
-    warn('no Markdown (.md/.markdown) files found. For LaTeX, use the check-tex skill.');
+    warn('no Markdown (.md/.markdown) files found. For LaTeX, use the prose-check-tex skill.');
     process.exit(2);
   }
 
@@ -352,12 +467,15 @@ async function main() {
   if (!valeUsable) warn('Vale not found on PATH — Markdown will be checked with textlint only.');
 
   if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx) — misspellings are not checked by typos.');
+  if (!resolveAspell()) warn('aspell not found (PATH, Docker) — spelling is not checked by aspell.');
 
   const findings = [];
   for (const file of files) {
     findings.push(...runTextlint(file, textlintConfig));
     if (valeUsable) findings.push(...runVale(file));
     findings.push(...runTypos(file));
+    findings.push(...runAspell(file, stripLatex(readFileSync(file, 'utf8')), process.env.CHECK_MD_LANG || 'en', 'markdown'));
+    findings.push(...runMarkdownlint(file));
   }
 
   findings.sort((a, b) =>
@@ -371,8 +489,8 @@ async function main() {
   warn(`  by source:   ${fmt(tally('source'))}`);
   warn(`  by severity: ${fmt(tally('severity'))}`);
 
-  if (hadToolError) process.exit(2);
-  process.exit(findings.length > 0 ? 1 : 0);
+  // exitCode, not exit(): exit() would end the process before a piped stdout is flushed
+  process.exitCode = hadToolError ? 2 : findings.length > 0 ? 1 : 0;
 }
 
 main().catch((e) => {
