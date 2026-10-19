@@ -3,7 +3,8 @@ node_modules/
 package-lock.json
 npm-debug.log*
 
-# Vale styles are vendored (committed) for offline, reproducible runs — not ignored.
+# Vale styles: `vale sync` downloads them on the first run (see assets/vale.ini)
+skills/**/assets/styles/
 
 # Generated effective configs
 skills/**/assets/.textlintrc.*.json

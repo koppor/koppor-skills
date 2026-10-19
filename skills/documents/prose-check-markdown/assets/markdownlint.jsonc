@@ -1,0 +1,6 @@
+{
+  // Base configuration when the repository has no .markdownlint* file
+  "default": true,
+  // Prose is not wrapped at a fixed width
+  "MD013": false
+}

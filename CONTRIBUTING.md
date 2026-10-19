@@ -12,7 +12,7 @@ skills/<category>/<skill-name>/SKILL.md
 ```
 
 - **Category** — a topic folder directly under `skills/`. Current: `documents`, `tex`,
-  `jabref` (planned), `research` (planned). Add a new one by creating the folder and
+  `tools`, `jabref` (planned), `research` (planned). Add a new one by creating the folder and
   listing it in [README.md](README.md).
 - **Skill name** — kebab-case. The folder name **must equal** the `name:` in the
   frontmatter.
@@ -50,7 +50,7 @@ Plain Markdown after the frontmatter:
   contributors and users here are on Windows and Unix.
 - Use tables for tool/option matrices. Show real, copy-pasteable commands.
 - Reference bundled files by relative path, e.g.
-  [`scripts/check-md.mjs`](skills/documents/check-markdown/scripts/check-md.mjs).
+  [`scripts/check-md.mjs`](skills/documents/prose-check-markdown/scripts/check-md.mjs).
 - Keep secrets and machine-specific paths out; make scripts resolve their own location.
 
 ## Scripts
