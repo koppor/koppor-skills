@@ -41,7 +41,7 @@ Prerequisites:
   Details and alternatives (local `.jar`): [languagetool.md](references/languagetool.md).
 - **typos** — common misspellings, also in code spans and comments. Optional: taken from
   `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
-  skipped. It knows English only; a repository's `_typos.toml` (excluded files, allowed
+  skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
   words) applies, also to files named on the command line.
   - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
   - macOS: `brew install typos-cli`

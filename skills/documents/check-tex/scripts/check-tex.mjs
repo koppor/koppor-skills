@@ -135,7 +135,7 @@ function runTextlint(file) {
 // ── typos ────────────────────────────────────────────────────────────────────
 // https://github.com/crate-ci/typos finds common misspellings (English only), also in
 // comments and code. Taken from PATH, else via `pipx run typos` or `uvx typos`.
-// typos finds the repository's _typos.toml by walking up from the file;
+// typos finds the repository's .typos.toml by walking up from the file;
 // --force-exclude applies its extend-exclude (e.g., German files) to named files, too.
 let typosCmd;
 function resolveTypos() {

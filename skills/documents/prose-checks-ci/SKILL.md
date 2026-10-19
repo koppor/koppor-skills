@@ -10,7 +10,7 @@ This skill sets up and debugs **CI checks of the prose** in LaTeX and Markdown
 repositories. For checking a single file locally and editing it, use the sibling skills
 [`check-tex`](../check-tex/SKILL.md) (TeXtidote, textlint, typos) and
 [`check-markdown`](../check-markdown/SKILL.md) (Vale, textlint, LanguageTool, typos); they
-use a repository's `.textidote` and `_typos.toml`, so local and CI results match.
+use a repository's `.textidote` and `.typos.toml`, so local and CI results match.
 
 The knowledge comes from the CI of the
 [latextemplates](https://github.com/latextemplates) (theses and papers, English and
@@ -158,7 +158,8 @@ typos --format brief .
 
 - **English only**: in German text, `ist`, `oder`, `ein`, `Ende`, `als` are "typos".
   Exclude German files, and expect German comments in English files to show up too.
-- Configure `_typos.toml`: `[files] extend-exclude` for German files, `*.bib`, `*.bst`,
+- Configure `.typos.toml` (typos also reads `typos.toml` and `_typos.toml`, but no YAML;
+  the hidden name matches `.textidote` and `.markdownlint.yml`): `[files] extend-exclude` for German files, `*.bib`, `*.bst`,
   vendored `*.cls`/`*.sty`, word lists, and submodules; `[default.extend-words]` for
   names such as `Heros` (TeX Gyre Heros). `2\textsuperscript{nd}` reports `nd`.
 - It finds what the others miss: misspellings in comments and code identifiers, and

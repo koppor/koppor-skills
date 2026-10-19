@@ -48,7 +48,7 @@ and maps the findings back to the source lines. An alternative for grammar is `l
     `--read-all`.
 - **typos** — common misspellings, also in code spans and comments. Optional: taken from
   `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
-  skipped. It knows English only; a repository's `_typos.toml` (excluded files, allowed
+  skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
   words) applies, also to files named on the command line.
   - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
   - macOS: `brew install typos-cli`
@@ -98,7 +98,7 @@ Read the JSON and triage — same philosophy as `check-markdown`:
 
 - **`error` → apply.** Spelling and grammar from TeXtidote, misspellings from typos — but
   check proper nouns, macro names, and non-English text (typos knows English only); add
-  real words to the repository's word list (`.textidote` `--dict`, `_typos.toml`).
+  real words to the repository's word list (`.textidote` `--dict`, `.typos.toml`).
 - **`warning` → judgment call.** `write-good` (passive voice, weasel words, wordiness) and
   `terminology`. Rewrite only when it genuinely improves the sentence and preserves the
   author's meaning and voice. Academic prose may keep passive voice on purpose.
