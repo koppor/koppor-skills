@@ -15,6 +15,7 @@ written to be agent-agnostic and reusable by anyone.
 | `documents` | [`prose-checks-ci`](skills/documents/prose-checks-ci/SKILL.md) | Set up spell checking and prose linting of LaTeX and Markdown in **GitHub Actions** with **aspell**, **TeXtidote**, **textlint**, **Vale**, **typos**, and **markdownlint**. |
 | `tex` | [`compile-tex`](skills/tex/compile-tex/SKILL.md) | Compile LaTeX / plain TeX / ConTeXt to PDF via the `texlive/texlive` Docker image. |
 | `tex` | [`read-tex-log`](skills/tex/read-tex-log/SKILL.md) | Summarize LaTeX `.log` files (errors, boxes, undefined refs/cites) with **texlogsieve**. |
+| `tools` | [`run-with-gg`](skills/tools/run-with-gg/SKILL.md) | Run Java, Node.js, Gradle, or any GitHub release binary without installing it, with **gg.cmd**. |
 | `jabref` | _(planned)_ | BibTeX/biblatex management, `jabkit`, PDF → BibTeX. |
 | `research` | _(planned)_ | Literature and research-workflow helpers. |
 

@@ -61,7 +61,7 @@ function runBin(cmd, args, opts = {}) {
 function commandExists(cmd) {
   const probe = isWin
     ? run('where', [cmd], { cwd: process.cwd() })
-    : run('command', ['-v', cmd], { cwd: process.cwd(), shell: true });
+    : run(`command -v '${cmd}'`, [], { cwd: process.cwd(), shell: true });
   return probe.status === 0;
 }
 
@@ -133,17 +133,39 @@ function runTextlint(file) {
   return findings;
 }
 
+// ── gg.cmd ───────────────────────────────────────────────────────────────────
+// https://github.com/eirikb/gg runs GitHub release binaries and Java programs without
+// installing them (cached in ~/.cache/gg); a fallback when a tool is not on PATH. Taken
+// from GG_CMD (the path to gg.cmd), else from gg.cmd on PATH. Versions are pinned: without
+// one, gg picks typos 1.13.10 instead of the latest release.
+let ggCmd;
+function resolveGg() {
+  if (ggCmd !== undefined) return ggCmd;
+  let path = process.env.GG_CMD && existsSync(process.env.GG_CMD) ? resolve(process.env.GG_CMD) : null;
+  if (!path) {
+    const probe = isWin
+      ? run('where', ['gg.cmd'], { cwd: process.cwd() })
+      : run('command -v gg.cmd', [], { cwd: process.cwd(), shell: true });
+    if (probe.status === 0) path = probe.stdout.split(/\r?\n/)[0].trim();
+  }
+  // gg.cmd is a shell script and a batch file in one; sh runs it even if it is not executable
+  ggCmd = !path ? null : isWin ? [path] : ['sh', path];
+  return ggCmd;
+}
+
 // ── typos ────────────────────────────────────────────────────────────────────
 // https://github.com/crate-ci/typos finds common misspellings (English only), also in
-// comments and code. Taken from PATH, else via `pipx run typos` or `uvx typos`.
+// comments and code. Taken from PATH, else via `pipx run typos`, `uvx typos`, or gg.cmd.
 // typos finds the repository's .typos.toml by walking up from the file;
 // --force-exclude applies its extend-exclude (e.g., German files) to named files, too.
+const TYPOS_VERSION = '1.51.1';
 let typosCmd;
 function resolveTypos() {
   if (typosCmd !== undefined) return typosCmd;
   if (commandExists('typos')) typosCmd = ['typos'];
   else if (commandExists('pipx')) typosCmd = ['pipx', 'run', 'typos'];
   else if (commandExists('uvx')) typosCmd = ['uvx', 'typos'];
+  else if (resolveGg()) typosCmd = [...resolveGg(), `gh/crate-ci/typos@${TYPOS_VERSION}`];
   else typosCmd = null;
   return typosCmd;
 }
@@ -250,8 +272,9 @@ function runAspell(file, text, lang, filterMode) {
 
 // ── TeXtidote ────────────────────────────────────────────────────────────────
 // https://github.com/sylvainhalle/textidote runs LanguageTool on LaTeX (spelling, grammar)
-// and adds LaTeX style rules (sh:*). Taken from PATH, else from the danteev/texlive Docker
-// image (override with TEXTIDOTE_IMAGE). TeXtidote reads a `.textidote` file in its working
+// and adds LaTeX style rules (sh:*). Taken from PATH, else through gg.cmd (the release jar
+// on Java 21: on newer Java, LanguageTool's English rules exceed jdk.xml.totalEntitySizeLimit),
+// else from the danteev/texlive Docker image (override with TEXTIDOTE_IMAGE). TeXtidote reads a `.textidote` file in its working
 // directory (options such as --check, --dict, --replace, --remove-macros), so it runs in
 // the nearest ancestor directory containing one — the repository's settings apply.
 const textidoteImage = process.env.TEXTIDOTE_IMAGE || 'danteev/texlive:latest';
@@ -259,6 +282,7 @@ let textidoteMode;
 function resolveTextidote() {
   if (textidoteMode !== undefined) return textidoteMode;
   if (commandExists('textidote')) textidoteMode = 'path';
+  else if (resolveGg()) textidoteMode = 'gg';
   else if (commandExists('docker')) textidoteMode = 'docker';
   else textidoteMode = null;
   return textidoteMode;
@@ -305,10 +329,11 @@ function runTextidote(file) {
   if (!config) args.push('--check', detectLanguage(text));
   let jsonOut;
   let singleOut;
-  if (mode === 'path') {
-    const json = runBin('textidote', ['--output', 'json', ...args, rel], { cwd: root });
+  if (mode !== 'docker') {
+    const cmd = mode === 'path' ? ['textidote'] : [...resolveGg(), 'gh/sylvainhalle/textidote@v0.9:java@21'];
+    const json = runBin(cmd[0], [...cmd.slice(1), '--output', 'json', ...args, rel], { cwd: root });
     jsonOut = json.stdout;
-    singleOut = runBin('textidote', ['--output', 'singleline', '--no-color', ...args, rel], { cwd: root }).stdout;
+    singleOut = runBin(cmd[0], [...cmd.slice(1), '--output', 'singleline', '--no-color', ...args, rel], { cwd: root }).stdout;
     if (!jsonOut.includes('{')) {
       warn(`TeXtidote failed on ${file}: ${json.stderr.trim().split('\n').slice(-3).join(' ') || 'no output'}`);
       hadToolError = true;
@@ -366,8 +391,8 @@ function main() {
 
   if (!ensureNodeModules()) process.exit(2);
 
-  if (!resolveTextidote()) warn('TeXtidote not found (PATH, Docker) — spelling and grammar are not checked by TeXtidote.');
-  if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx) — misspellings are not checked by typos.');
+  if (!resolveTextidote()) warn('TeXtidote not found (PATH, gg.cmd, Docker) — spelling and grammar are not checked by TeXtidote.');
+  if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx, gg.cmd) — misspellings are not checked by typos.');
   if (!resolveAspell()) warn('aspell not found (PATH, Docker) — spelling is not checked by aspell.');
 
   const findings = [];

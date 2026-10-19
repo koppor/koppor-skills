@@ -82,12 +82,22 @@ function runBin(cmd, args, opts = {}) {
   return run(cmd, args, opts);
 }
 
-const vale = (args, opts = {}) => runBin('vale', args, opts);
+// Vale from PATH, else through gg.cmd (see resolveGg)
+const VALE_VERSION = '3.24.0';
+let valeCmd;
+function resolveVale() {
+  if (valeCmd !== undefined) return valeCmd;
+  if (commandExists('vale')) valeCmd = ['vale'];
+  else if (resolveGg()) valeCmd = [...resolveGg(), `gh/errata-ai/vale@${VALE_VERSION}`];
+  else valeCmd = null;
+  return valeCmd;
+}
+const vale = (args, opts = {}) => runBin(resolveVale()[0], [...resolveVale().slice(1), ...args], opts);
 
 function commandExists(cmd) {
   const probe = isWin
     ? run('where', [cmd], { cwd: process.cwd() })
-    : run('command', ['-v', cmd], { cwd: process.cwd(), shell: true });
+    : run(`command -v '${cmd}'`, [], { cwd: process.cwd(), shell: true });
   return probe.status === 0;
 }
 
@@ -277,7 +287,7 @@ function runVale(file) {
 }
 
 function ensureValeStyles() {
-  if (!commandExists('vale')) return false;
+  if (!resolveVale()) return false;
   const hasStyles = existsSync(valeStylesDir) && readdirSync(valeStylesDir).length > 0;
   if (!hasStyles) {
     warn('Vale styles missing — running `vale sync` (one-time download)...');
@@ -287,17 +297,39 @@ function ensureValeStyles() {
   return true;
 }
 
+// ── gg.cmd ───────────────────────────────────────────────────────────────────
+// https://github.com/eirikb/gg runs GitHub release binaries and Java programs without
+// installing them (cached in ~/.cache/gg); a fallback when a tool is not on PATH. Taken
+// from GG_CMD (the path to gg.cmd), else from gg.cmd on PATH. Versions are pinned: without
+// one, gg picks typos 1.13.10 instead of the latest release.
+let ggCmd;
+function resolveGg() {
+  if (ggCmd !== undefined) return ggCmd;
+  let path = process.env.GG_CMD && existsSync(process.env.GG_CMD) ? resolve(process.env.GG_CMD) : null;
+  if (!path) {
+    const probe = isWin
+      ? run('where', ['gg.cmd'], { cwd: process.cwd() })
+      : run('command -v gg.cmd', [], { cwd: process.cwd(), shell: true });
+    if (probe.status === 0) path = probe.stdout.split(/\r?\n/)[0].trim();
+  }
+  // gg.cmd is a shell script and a batch file in one; sh runs it even if it is not executable
+  ggCmd = !path ? null : isWin ? [path] : ['sh', path];
+  return ggCmd;
+}
+
 // ── typos ────────────────────────────────────────────────────────────────────
 // https://github.com/crate-ci/typos finds common misspellings (English only), also in
-// comments and code. Taken from PATH, else via `pipx run typos` or `uvx typos`.
+// comments and code. Taken from PATH, else via `pipx run typos`, `uvx typos`, or gg.cmd.
 // typos finds the repository's .typos.toml by walking up from the file;
 // --force-exclude applies its extend-exclude (e.g., German files) to named files, too.
+const TYPOS_VERSION = '1.51.1';
 let typosCmd;
 function resolveTypos() {
   if (typosCmd !== undefined) return typosCmd;
   if (commandExists('typos')) typosCmd = ['typos'];
   else if (commandExists('pipx')) typosCmd = ['pipx', 'run', 'typos'];
   else if (commandExists('uvx')) typosCmd = ['uvx', 'typos'];
+  else if (resolveGg()) typosCmd = [...resolveGg(), `gh/crate-ci/typos@${TYPOS_VERSION}`];
   else typosCmd = null;
   return typosCmd;
 }
@@ -464,9 +496,9 @@ async function main() {
 
   const textlintConfig = await buildTextlintConfig();
   const valeUsable = ensureValeStyles();
-  if (!valeUsable) warn('Vale not found on PATH — Markdown will be checked with textlint only.');
+  if (!valeUsable) warn('Vale not found (PATH, gg.cmd) — Markdown is not checked by Vale.');
 
-  if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx) — misspellings are not checked by typos.');
+  if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx, gg.cmd) — misspellings are not checked by typos.');
   if (!resolveAspell()) warn('aspell not found (PATH, Docker) — spelling is not checked by aspell.');
 
   const findings = [];

@@ -35,8 +35,8 @@ Prerequisites:
 - **Node.js ≥ 18** (uses built-in `fetch`). The runner runs `npm install` in `assets/`
   automatically on first use; to do it ahead of time:
   `npm install --prefix skills/documents/prose-check-markdown/assets`.
-- **Vale** on `PATH` — style, readability, spelling. Optional: without it, Markdown is
-  checked with textlint only.
+- **Vale** — style, readability, spelling. Optional: taken from `PATH`, else run through
+  [gg.cmd](../../tools/run-with-gg/SKILL.md) (version pinned in the runner); without either, Vale is skipped.
   - Windows: `winget install errata-ai.Vale` (or `choco install vale`)
   - macOS: `brew install vale`
   - Linux/other: download from <https://github.com/errata-ai/vale/releases>
@@ -44,8 +44,8 @@ Prerequisites:
   `erikvl87/languagetool` Docker image if Docker is present, else falls back gracefully.
   Details and alternatives (local `.jar`): [languagetool.md](references/languagetool.md).
 - **typos** — common misspellings, also in code spans and comments. Optional: taken from
-  `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
-  skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
+  `PATH`, else run through `pipx run typos`, `uvx typos`, or [gg.cmd](../../tools/run-with-gg/SKILL.md) (version pinned in the
+  runner); without any of them, typos is skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
   words) applies, also to files named on the command line.
   - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
   - macOS: `brew install typos-cli`

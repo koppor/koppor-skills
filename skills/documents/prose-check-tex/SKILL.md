@@ -38,9 +38,10 @@ and maps the findings back to the source lines. An alternative for grammar is `l
 
 - **Node.js ≥ 18**. The runner runs `npm install` in `assets/` automatically on first use;
   to do it ahead of time: `npm install --prefix skills/documents/prose-check-tex/assets`.
-- **TeXtidote** — spelling and grammar. Optional: taken from `PATH`, else run in the
+- **TeXtidote** — spelling and grammar. Optional: taken from `PATH`, else run through
+  [gg.cmd](../../tools/run-with-gg/SKILL.md) (the release jar on Java 21, no install needed), else in the
   [`danteev/texlive`](https://hub.docker.com/r/danteev/texlive) Docker image (large; pick
-  another tag with `TEXTIDOTE_IMAGE`, e.g. `danteev/texlive:2026-C`); without either,
+  another tag with `TEXTIDOTE_IMAGE`, e.g. `danteev/texlive:2026-C`); without any of them,
   TeXtidote is skipped.
   - A `.textidote` file in the file's directory or an ancestor (up to the repository root)
     is used: the runner starts TeXtidote there, so the repository's options (`--check`,
@@ -50,8 +51,8 @@ and maps the findings back to the source lines. An alternative for grammar is `l
   - Files without `\begin{document}` (chapters pulled in by `\include`) are checked with
     `--read-all`.
 - **typos** — common misspellings, also in code spans and comments. Optional: taken from
-  `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
-  skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
+  `PATH`, else run through `pipx run typos`, `uvx typos`, or [gg.cmd](../../tools/run-with-gg/SKILL.md) (version pinned in the
+  runner); without any of them, typos is skipped. It knows English only; a repository's `.typos.toml` (excluded files, allowed
   words) applies, also to files named on the command line.
   - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
   - macOS: `brew install typos-cli`
