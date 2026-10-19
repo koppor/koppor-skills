@@ -8,7 +8,9 @@ license: MIT
 
 This skill sets up and debugs **CI checks of the prose** in LaTeX and Markdown
 repositories. For checking a single file locally and editing it, use the sibling skills
-[`check-tex`](../check-tex/SKILL.md) and [`check-markdown`](../check-markdown/SKILL.md).
+[`check-tex`](../check-tex/SKILL.md) (TeXtidote, textlint, typos) and
+[`check-markdown`](../check-markdown/SKILL.md) (Vale, textlint, LanguageTool, typos); they
+use a repository's `.textidote` and `_typos.toml`, so local and CI results match.
 
 The knowledge comes from the CI of the
 [latextemplates](https://github.com/latextemplates) (theses and papers, English and

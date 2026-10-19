@@ -1,12 +1,12 @@
 ---
 name: check-markdown
-description: Lint Markdown prose with Vale, textlint, and LanguageTool, then apply the findings as targeted text improvements. Use when the user wants to check, proofread, or improve a .md file — grammar, style, terminology, passive voice, spelling, or readability.
+description: Lint Markdown prose with Vale, textlint, LanguageTool, and typos, then apply the findings as targeted text improvements. Use when the user wants to check, proofread, or improve a .md file — grammar, style, terminology, passive voice, spelling, or readability.
 license: MIT
 ---
 
 # Check Markdown prose
 
-Lint natural-language prose in `.md` files with three complementary tools, then **read the
+Lint natural-language prose in `.md` files with four complementary tools, then **read the
 findings and apply them as edits** — do not blindly auto-fix.
 
 | Tool | Catches |
@@ -14,10 +14,11 @@ findings and apply them as edits** — do not blindly auto-fix.
 | [Vale](https://vale.sh) | House-style, wordiness, readability, spelling (write-good, proselint, Vale.Spelling) |
 | [textlint](https://textlint.org) | Terminology, weak wording (write-good) |
 | [LanguageTool](https://languagetool.org) | Grammar, agreement, real-word errors |
+| [typos](https://github.com/crate-ci/typos) | Common misspellings, also in code spans and comments (English only) |
 
 LanguageTool runs *inside* the textlint pass (rule `@textlint-rule/gramma`), so it is
 markup-aware and its hits arrive in the same JSON. The bundled runner
-[`scripts/check-md.mjs`](scripts/check-md.mjs) drives all three and emits one merged JSON
+[`scripts/check-md.mjs`](scripts/check-md.mjs) drives all four and emits one merged JSON
 array — that unified output is what you act on.
 
 > **LaTeX?** Use the sibling [`check-tex`](../check-tex/SKILL.md) skill. Vale cannot parse
@@ -38,6 +39,12 @@ Prerequisites:
 - **LanguageTool** — grammar. On by default; the runner auto-starts the
   `erikvl87/languagetool` Docker image if Docker is present, else falls back gracefully.
   Details and alternatives (local `.jar`): [languagetool.md](references/languagetool.md).
+- **typos** — common misspellings, also in code spans and comments. Optional: taken from
+  `PATH`, else run through `pipx run typos` or `uvx typos`; without any of them, typos is
+  skipped. It knows English only; a repository's `_typos.toml` (excluded files, allowed
+  words) applies, also to files named on the command line.
+  - Windows/macOS/Linux: `pipx install typos` (or `cargo install typos-cli`)
+  - macOS: `brew install typos-cli`
 
 Vale styles download automatically on first run (`vale sync`).
 
@@ -69,14 +76,14 @@ Each finding:
 }
 ```
 
-`source` is `textlint`, `vale`, or `languagetool`. Exit code: `0` clean, `1` findings,
+`source` is `textlint`, `vale`, `languagetool`, or `typos`. Exit code: `0` clean, `1` findings,
 `2` setup/tool failure.
 
 **Severity is normalized so it means something:**
 
 | `severity` | Meaning | Comes from |
 | --- | --- | --- |
-| `error` | Very likely wrong — fix it | LanguageTool grammar, `Vale.Spelling` |
+| `error` | Very likely wrong — fix it | LanguageTool grammar, `Vale.Spelling`, typos |
 | `warning` | Style / wordiness — judgment call | `write-good`, `terminology`, most proselint |
 | `suggestion` | Readability signal — usually informational | Readability metrics |
 
@@ -89,7 +96,8 @@ there; the runner warns when you do.
 This is the point of the skill: **you** decide what each finding is worth. Read the JSON
 and triage by severity and kind, not by blindly applying every suggestion.
 
-- **`error` → apply.** Grammar/agreement from LanguageTool, spelling from `Vale.Spelling`.
+- **`error` → apply.** Grammar/agreement from LanguageTool, spelling from `Vale.Spelling`
+  and typos (except in non-English text — typos knows English only).
   Fix these in the source with the Edit tool.
 - **`warning` → judgment call.** `write-good` (passive voice, weasel words, "so"/"just"),
   `terminology`, proselint. Rewrite for clarity **only when it genuinely improves the

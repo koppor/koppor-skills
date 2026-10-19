@@ -7,7 +7,7 @@
 // Findings are normalized to one shape:
 //   { file, line, column, severity, source, rule, message, fixable }
 //     severity : "error" | "warning" | "suggestion"
-//     source   : "textlint" | "vale" | "languagetool"
+//     source   : "textlint" | "vale" | "languagetool" | "typos"
 //
 // Severity policy (see normalizeSeverity): grammar (LanguageTool) and spelling
 // (Vale.Spelling) stay `error`; wordiness/style (write-good, terminology, proselint)
@@ -25,7 +25,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -94,7 +94,7 @@ function commandExists(cmd) {
 function ensureNodeModules() {
   if (existsSync(join(assetsDir, 'node_modules')) && existsSync(textlintBin)) return true;
   warn('textlint dependencies missing — running `npm install` (one-time)...');
-  const res = runBin('npm', ['install', '--no-audit', '--no-fund'], { cwd: assetsDir, stdio: 'inherit' });
+  const res = runBin('npm', ['install', '--no-audit', '--no-fund'], { cwd: assetsDir, stdio: ['ignore', 2, 2] });
   if (!res.ok || !existsSync(textlintBin)) {
     warn(`npm install failed — run it manually:  npm install --prefix "${assetsDir}"`);
     return false;
@@ -285,6 +285,52 @@ function ensureValeStyles() {
   return true;
 }
 
+// ── typos ────────────────────────────────────────────────────────────────────
+// https://github.com/crate-ci/typos finds common misspellings (English only), also in
+// comments and code. Taken from PATH, else via `pipx run typos` or `uvx typos`.
+// typos finds the repository's _typos.toml by walking up from the file;
+// --force-exclude applies its extend-exclude (e.g., German files) to named files, too.
+let typosCmd;
+function resolveTypos() {
+  if (typosCmd !== undefined) return typosCmd;
+  if (commandExists('typos')) typosCmd = ['typos'];
+  else if (commandExists('pipx')) typosCmd = ['pipx', 'run', 'typos'];
+  else if (commandExists('uvx')) typosCmd = ['uvx', 'typos'];
+  else typosCmd = null;
+  return typosCmd;
+}
+
+function runTypos(file) {
+  const cmd = resolveTypos();
+  if (!cmd) return [];
+  const res = runBin(cmd[0], [...cmd.slice(1), '--format', 'json', '--force-exclude', basename(file)],
+    { cwd: dirname(file) });
+  // Exit code 2 means "typos found"; anything else besides 0 is a tool failure.
+  if (res.status !== 0 && res.status !== 2) {
+    warn(`typos failed on ${file}: ${res.stderr.trim() || 'no output'}`);
+    hadToolError = true;
+    return [];
+  }
+  const findings = [];
+  for (const line of res.stdout.split('\n')) {
+    if (!line.trim().startsWith('{')) continue;
+    let t;
+    try { t = JSON.parse(line); } catch { continue; }
+    if (t.type !== 'typo') continue;
+    findings.push({
+      file,
+      line: t.line_num ?? null,
+      column: t.byte_offset != null ? t.byte_offset + 1 : null, // bytes, not characters
+      severity: 'error',
+      source: 'typos',
+      rule: 'typos',
+      message: `"${t.typo}" should be ${(t.corrections || []).map((c) => `"${c}"`).join(' or ') || 'removed'}`,
+      fixable: (t.corrections || []).length === 1,
+    });
+  }
+  return findings;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const paths = process.argv.slice(2);
@@ -305,10 +351,13 @@ async function main() {
   const valeUsable = ensureValeStyles();
   if (!valeUsable) warn('Vale not found on PATH — Markdown will be checked with textlint only.');
 
+  if (!resolveTypos()) warn('typos not found (PATH, pipx, uvx) — misspellings are not checked by typos.');
+
   const findings = [];
   for (const file of files) {
     findings.push(...runTextlint(file, textlintConfig));
     if (valeUsable) findings.push(...runVale(file));
+    findings.push(...runTypos(file));
   }
 
   findings.sort((a, b) =>
