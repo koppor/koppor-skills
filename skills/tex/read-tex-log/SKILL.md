@@ -14,8 +14,8 @@ license: MIT
 [`texlogsieve`](https://ctan.org/pkg/texlogsieve) turns a raw TeX `.log` into a short
 report: messages grouped per page and source file, wrapped lines rejoined, and a final
 summary of boxes, undefined references/citations, and rerun requests. It ships with TeX
-Live (a Lua script, `/usr/bin/texlogsieve` in the `texlive/texlive` image) — nothing to
-install. Compile first (see [`compile-tex`](../compile-tex/SKILL.md)), then sieve.
+Live (a Lua script, `/usr/bin/texlogsieve` in the `texlive/texlive` and `danteev/texlive`
+images) — nothing to install. Compile first (see [`compile-tex`](../compile-tex/SKILL.md)), then sieve.
 
 ## Run
 

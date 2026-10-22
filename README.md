@@ -13,7 +13,7 @@ written to be agent-agnostic and reusable by anyone.
 | `documents` | [`prose-check-markdown`](skills/documents/prose-check-markdown/SKILL.md) | Check Markdown prose with **Vale**, **textlint**, **LanguageTool**, **typos**, **aspell**, and **markdownlint**, then report the findings or apply them as targeted edits. |
 | `documents` | [`prose-check-tex`](skills/documents/prose-check-tex/SKILL.md) | Check LaTeX prose with **TeXtidote**, **textlint** (latex2e), **typos**, and **aspell**, then report the findings or apply them as targeted edits. |
 | `documents` | [`prose-checks-ci`](skills/documents/prose-checks-ci/SKILL.md) | Set up spell checking and prose linting of LaTeX and Markdown in **GitHub Actions** with **aspell**, **TeXtidote**, **textlint**, **Vale**, **typos**, and **markdownlint**. |
-| `tex` | [`compile-tex`](skills/tex/compile-tex/SKILL.md) | Compile LaTeX / plain TeX / ConTeXt to PDF via the `texlive/texlive` Docker image. |
+| `tex` | [`compile-tex`](skills/tex/compile-tex/SKILL.md) | Compile LaTeX / plain TeX / ConTeXt to PDF via the `texlive/texlive` Docker image, with `danteev/texlive` as the fallback for PlantUML, Mermaid, Inkscape, and other non-TeX-Live tools. |
 | `tex` | [`read-tex-log`](skills/tex/read-tex-log/SKILL.md) | Summarize LaTeX `.log` files (errors, boxes, undefined refs/cites) with **texlogsieve**. |
 | `tools` | [`run-with-gg`](skills/tools/run-with-gg/SKILL.md) | Run Java, Node.js, Gradle, or any GitHub release binary without installing it, with **gg.cmd**. |
 | `jabref` | _(planned)_ | BibTeX/biblatex management, `jabkit`, PDF → BibTeX. |
@@ -62,9 +62,9 @@ Conventions for adding a skill or category are in [CONTRIBUTING.md](CONTRIBUTING
 
 ## Relationship to `koppor-tex-skills`
 
-The standalone `koppor-tex-skills` plugin marketplace is being folded into this repo; its
-`compile-tex` skill now lives here under `skills/tex/`. That marketplace is deprecated —
-prefer this repo going forward.
+The standalone [`claude-tex-skills`](https://github.com/koppor/claude-tex-skills) plugin
+marketplace (`koppor-tex-skills`) is archived. Its `compile-tex` skill lives here under
+`skills/tex/` and is no longer mirrored — this repo is the only maintained copy.
 
 ## License
 

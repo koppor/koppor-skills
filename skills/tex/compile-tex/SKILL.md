@@ -5,8 +5,10 @@ description: >-
   texlive/texlive Docker image. Agent-agnostic notes on the bits a fresh
   agent gets wrong without the doc: working directory, scheme and
   -doc/-src semantics, the latest tag's weekly rebuild, the non-root
-  texlive user, the latexmk and arara wrappers, and LuaLaTeX as the
-  modern default engine.
+  texlive user, the latexmk and arara wrappers, LuaLaTeX as the
+  modern default engine, and the danteev/texlive image as the fallback
+  when a document needs tools beyond TeX Live (PlantUML, Mermaid,
+  Inkscape, Gnuplot, Graphviz, TikZ-UML, Pandoc, ...).
 license: MIT
 ---
 
@@ -32,8 +34,17 @@ documentation; ordinary `pdflatex foo.tex`–level usage is taken for granted.
   `latest`), and `context`. Tag form: `latest-<scheme>`, e.g.
   `latest-medium`. Smaller schemes pull faster but ship fewer CTAN
   packages and may omit `latexmk`, `arara`, or `context`.
-- **Historic tags:** `TLYYYY-historic`, e.g. `TL2024-historic`. Rebuilt
-  monthly for OS updates only; TeX Live contents are frozen.
+- **Dated snapshots (reproducible):** `TL<year>-YYYY-MM-DD-<scheme>[-doc][-src]`,
+  e.g. `TL2026-2026-10-18-full` or `TL2026-2026-10-18` (the bare form is
+  the `full`-scheme alias). The first year is the TeX Live release; the
+  date is the build date. Pin to one when you need byte-for-byte
+  reproducibility.
+- **Historic tags:** `TL<year>-historic[-doc][-src]`, e.g. `TL2024-historic`.
+  Built for TeX Live `2013`–`2025` (full scheme only — no scheme
+  variants). Rebuilt monthly for OS updates only; TeX Live contents are
+  frozen.
+- **Architectures:** `linux/amd64` and `linux/arm64/v8` (multi-arch
+  manifests for `latest`, dated, and historic tags).
 - **`-doc` and `-src` flavors** add *documentation* and *source* files for
   already-installed packages. They do **not** add more packages. If a
   package is missing, switch to a larger scheme or run
@@ -127,6 +138,69 @@ Extract the actual error from `foo.log`: search for lines starting with
 `! ` together with the `l.<n>` line reference. Show that; do not paste the
 full log. For a filtered summary use
 [`read-tex-log`](../read-tex-log/SKILL.md) (`texlogsieve`).
+
+With `-interaction=nonstopmode`, some fatal states appear as repeated
+non-`!` lines (e.g. a NUL-corrupted `.aux` yields many
+`Text line contains an invalid character` messages and a final
+`==> Fatal error occurred`). If a `! `-grep finds nothing, check the last
+lines of the log for `Fatal error` and `That makes 100 errors`.
+
+## Fallback: `danteev/texlive` when TeX Live is not enough
+
+Some documents call external tools through `--shell-escape` or need
+packages that are not on CTAN. The plain `texlive/texlive` image does not
+ship them; switch to [`danteev/texlive`](https://github.com/dante-ev/docker-texlive)
+(Docker Hub `danteev/texlive`, mirror `ghcr.io/dante-ev/texlive`). It is
+the Island of TeX `full` image plus:
+
+| Need | Tool in the image |
+| --- | --- |
+| `plantuml` package | PlantUML (`plantuml`, `$PLANTUML_JAR`), Graphviz, Inkscape |
+| `ltmermaid` / `mermaid.sty` | Mermaid CLI (`mmdc`) with Node.js and Chromium |
+| `tikz-uml` | TikZ-UML (`tikz-uml.sty`, not in TeX Live) |
+| `gnuplottex`, `pgfplots` with `gnuplot` | Gnuplot |
+| `svg` package (`\includesvg`) | Inkscape |
+| xfig figures | fig2dev |
+| TeX ↔ Markdown/HTML conversion | Pandoc (recent release), LaTeXML, panflute |
+| Bibliography tooling | bibtool |
+| Spelling / grammar | aspell (en, de), TeXtidote (`textidote`) |
+| PDF inspection | poppler-utils (`pdftotext`, `pdftoppm`, …) |
+| Dependency listing | DEPP (`depp`) |
+| Python packages | `pip3` |
+
+`minted` works in both images (Python 3 with Pygments is in the base).
+
+Facts that differ from `texlive/texlive`:
+
+- **Tags:** `latest` (last release), `edge` (built on the 1st and 15th
+  from upstream `latest`), `YYYY-MM-DD` (dated builds), and release tags
+  `YYYY-R` where `YYYY` is the TeX Live year and `R` a letter, e.g.
+  `2026-C`. Releases pin a dated upstream image, so `2026-C` is the
+  reproducible choice. There are no scheme, `-doc`, or `-src` variants:
+  the image is always `full`.
+- **Size:** several GB (Inkscape, Chromium, Java). Pull once; prefer a
+  release tag over `latest`/`edge` unless the newest TeX Live is needed.
+- **Same conventions otherwise:** `/workdir` is the working directory,
+  `root` is the default user and the `texlive` user exists, `latexmk`,
+  `arara`, `context`, and `texlogsieve` are present, and `LANG` is
+  `C.UTF-8`. Everything above about engines and build tools applies.
+- **`/etc/latexmkrc`** makes `latexmk` ignore luaotfload's font caches so
+  a LuaLaTeX build does not get an extra rerun in every fresh container.
+
+Shell escape is required for PlantUML, Mermaid, Gnuplot, SVG, and minted:
+
+```sh
+docker run --rm -v "${PWD}:/workdir" danteev/texlive:2026-C \
+  latexmk -lualatex -shell-escape -interaction=nonstopmode -halt-on-error foo.tex
+```
+
+```powershell
+docker run --rm -v "${PWD}:/workdir" danteev/texlive:2026-C `
+  latexmk -lualatex -shell-escape -interaction=nonstopmode -halt-on-error foo.tex
+```
+
+Add `--pull=always` for `latest` or `edge`. In GitHub Actions, the same
+image backs [`dante-ev/latex-action`](https://github.com/dante-ev/latex-action).
 
 ## Housekeeping
 
