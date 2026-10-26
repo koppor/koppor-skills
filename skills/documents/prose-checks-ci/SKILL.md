@@ -180,8 +180,11 @@ jobs:
 - **`Vale.Spelling` suggestions are dictionary neighbours**, not fixes: `linebreaker` →
   "Windbreaker", `nowidow` → "snowplow". A package name or a term of the trade
   (`interword`) goes into `accept.txt` (one entry per line, `(?i)` prefix for
-  case-insensitive); there is no locale setting that helps. Vale skips inline code, so
-  `` `linebreaker` `` is the other way out.
+  case-insensitive); there is no locale setting that helps. Keep plain names in link
+  text and headings and grow the vocabulary. The exception is a package whose name is a
+  dictionary word with another casing (`url` → "Use 'URL'"): the vocabulary cannot allow
+  the lower case without dropping the check on the word, so write that one as inline
+  code (`` [`url`](https://ctan.org/pkg/url) ``), which Vale skips.
 
 ## typos
 
