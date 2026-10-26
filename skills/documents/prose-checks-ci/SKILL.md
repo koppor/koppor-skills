@@ -177,6 +177,11 @@ jobs:
   through the log) works there.
 - `fail_on_error: false` keeps the job green; rules in `.vale.ini`, accepted words in
   `.vale/styles/config/vocabularies/<Vocab>/accept.txt`.
+- **`Vale.Spelling` suggestions are dictionary neighbours**, not fixes: `linebreaker` →
+  "Windbreaker", `nowidow` → "snowplow". A package name or a term of the trade
+  (`interword`) goes into `accept.txt` (one entry per line, `(?i)` prefix for
+  case-insensitive); there is no locale setting that helps. Vale skips inline code, so
+  `` `linebreaker` `` is the other way out.
 
 ## typos
 
