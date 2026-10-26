@@ -206,6 +206,20 @@ typos --format brief .
 
 - Configure `.markdownlint.yml` and recommend the VS Code extension
   `davidanson.vscode-markdownlint` in `.vscode/extensions.json`.
+
+  ```yaml
+  default: true
+  # One sentence per line: a sentence with links easily exceeds 80 characters.
+  MD013: false
+  # Keyboard shortcuts as <kbd>Ctrl</kbd>+<kbd>S</kbd>; no other inline HTML.
+  MD033:
+    allowed_elements: [kbd]
+  ```
+
+- `MD013` (line length) is off because the prose follows the one-sentence-per-line rule,
+  not because long lines are fine; a reflow would break the per-sentence diffs.
+- `MD033` (inline HTML) stays on; only `kbd` is allowed, for keyboard shortcuts. More
+  HTML is not needed in prose repositories.
 - When link reference definitions are generated conditionally (templates), turn off
   `MD053` (unused link definitions).
 - Fenced code blocks inside list items must be indented to the list item's content.
