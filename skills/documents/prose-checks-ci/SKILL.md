@@ -24,7 +24,7 @@ German, `.tex` plus Markdown chapters).
 | [aspell](http://aspell.net) | spelling | `--mode=tex` | `--mode=markdown` | dictionary per language (en, de, …) | yes, on chosen files |
 | [TeXtidote](https://github.com/sylvainhalle/textidote) | spelling, grammar (LanguageTool), LaTeX style | yes | yes (`.md`) | en, de, … | usually report only |
 | [textlint](https://textlint.org) | terminology, passive voice, wordiness | `textlint-plugin-latex2e` | yes | English rules | report only (annotations) |
-| [Vale](https://vale.sh) | house style, readability | **no** LaTeX parser ([vale#54](https://github.com/errata-ai/vale/issues/54)) | yes | English styles | your choice |
+| [Vale](https://vale.sh) | house style, readability | **no** LaTeX parser ([vale#54](https://github.com/errata-ai/vale/issues/54)) | yes | English styles | your choice; PR review comments via reviewdog |
 | [typos](https://github.com/crate-ci/typos) | known misspellings, also in comments and code | yes (as text) | yes | **English only** | yes |
 | [markdownlint](https://github.com/DavidAnson/markdownlint) | Markdown structure | — | yes | — | yes |
 
@@ -142,6 +142,41 @@ npx --yes --package textlint --package textlint-plugin-latex2e `
   (`` `markdown` package ``) or add a pattern to `filters.allowlist.allow`.
 - `write-good` flags passive voice ("is written", "is referenced"); rephrase in example
   texts, accept it in academic prose.
+
+## Vale
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write   # github-pr-review posts review comments
+  checks: write          # github-check / github-pr-check write a check run
+jobs:
+  vale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: vale-cli/vale-action@v3.0.0
+        with:
+          files: all
+          # On a PR: review comments (with suggested fixes) on changed lines,
+          # check annotations for the rest. On push there is no PR to review.
+          reporter: ${{ github.event_name == 'pull_request' && 'github-pr-review' || 'github-check' }}
+          filter_mode: nofilter
+          fail_on_error: false
+```
+
+- **Findings as PR comments need `reporter: github-pr-review`** (the action's default
+  `github-pr-check` only writes a check run). reviewdog can comment only on lines inside the
+  diff; with `filter_mode: nofilter` the findings outside the diff fall back to check
+  annotations, so the whole file is still checked. Example:
+  [JabRef/user-documentation `lint.yaml`](https://github.com/JabRef/user-documentation/blob/db7796b0270d1cf0c3dd4c1617393989c2f0d55b/.github/workflows/lint.yaml#L51).
+- `github-pr-review` on a `push` event has no PR and fails the step (JabRef wraps it in
+  `continue-on-error: true`); the `reporter:` expression above avoids that.
+- A PR from a fork runs with a read-only token: no review comments, no check runs.
+  Only the default `github-pr-annotations` reporter (workflow-command annotations
+  through the log) works there.
+- `fail_on_error: false` keeps the job green; rules in `.vale.ini`, accepted words in
+  `.vale/styles/config/vocabularies/<Vocab>/accept.txt`.
 
 ## typos
 
