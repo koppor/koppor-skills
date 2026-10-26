@@ -154,7 +154,7 @@ jobs:
   vale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: vale-cli/vale-action@v3.0.0
         with:
           files: all
@@ -181,7 +181,7 @@ jobs:
 ## typos
 
 ```yaml
-      - uses: crate-ci/typos@v1.51.1   # pin the version; or: pipx run typos==1.50.3
+      - uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1 (SHA-pinned)
 ```
 
 ```sh
