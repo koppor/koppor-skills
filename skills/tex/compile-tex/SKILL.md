@@ -132,6 +132,30 @@ docker run --rm --pull=always --user texlive -v "${PWD}:/workdir" \
 
 Unnecessary on macOS and Windows Docker Desktop.
 
+## Reading package documentation
+
+The default image ships no documentation (`texdoc` finds nothing). Use the
+`-doc` flavor of the same tag, e.g. `texlive/texlive:latest-doc`
+(about twice the size), when a package manual is needed:
+
+```bash
+docker run --rm texlive/texlive:latest-doc texdoc -lM <package>
+```
+
+`-lM` lists the manual's files non-interactively (path, type) instead of
+opening a viewer. Most manuals are PDFs; the image has no `pdftotext`, but
+Ghostscript is there:
+
+```bash
+docker run --rm texlive/texlive:latest-doc \
+  gs -q -sDEVICE=txtwrite -o - /usr/local/texlive/<year>/texmf-dist/doc/<path>/<package>.pdf
+```
+
+Pipe through `grep -n -A5 <macro>` for one command's description instead of
+reading the whole manual. `.md`, `.txt`, and `.tex` manuals go through `cat`.
+The `-doc` image adds documentation for already installed packages only; a
+missing package still needs `tlmgr install` or a larger scheme.
+
 ## Error reporting
 
 Extract the actual error from `foo.log`: search for lines starting with
