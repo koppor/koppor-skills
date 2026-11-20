@@ -6,9 +6,10 @@ description: >-
   agent gets wrong without the doc: working directory, scheme and
   -doc/-src semantics, the latest tag's weekly rebuild, the non-root
   texlive user, the latexmk and arara wrappers, LuaLaTeX as the
-  modern default engine, and the danteev/texlive image as the fallback
-  when a document needs tools beyond TeX Live (PlantUML, Mermaid,
-  Inkscape, Gnuplot, Graphviz, TikZ-UML, Pandoc, ...).
+  modern default engine, and DANTE e.V.'s danteev/texlive image, used
+  from the start when a document uses PlantUML and as the fallback when
+  it needs other tools beyond TeX Live (Mermaid, Inkscape, Gnuplot,
+  Graphviz, TikZ-UML, Pandoc, ...).
 license: MIT
 ---
 
@@ -19,6 +20,14 @@ Build LaTeX, plain TeX, and ConTeXt documents to PDF using the
 `texlive/texlive` image — no host TeX Live install. This file collects the
 bits a general-purpose agent (or human) tends to get wrong without
 documentation; ordinary `pdflatex foo.tex`–level usage is taken for granted.
+
+**PlantUML → DANTE e.V. image.** If the sources use PlantUML
+(`\usepackage{plantuml}`, `\begin{plantuml}`, or `.puml` files), do not
+start with `texlive/texlive`: it has no Java, PlantUML, or Graphviz. Use
+DANTE e.V.'s `danteev/texlive` image with `-shell-escape` right away —
+see [the DANTE e.V. section](#dante-ev-image-danteevtexlive-for-plantuml-and-other-tools).
+Check with `grep -rlE 'plantuml|\.puml' --include='*.tex' .` before the
+first build.
 
 ## Image-specific facts
 
@@ -169,13 +178,16 @@ non-`!` lines (e.g. a NUL-corrupted `.aux` yields many
 `==> Fatal error occurred`). If a `! `-grep finds nothing, check the last
 lines of the log for `Fatal error` and `That makes 100 errors`.
 
-## Fallback: `danteev/texlive` when TeX Live is not enough
+## DANTE e.V. image: `danteev/texlive` for PlantUML and other tools
 
 Some documents call external tools through `--shell-escape` or need
 packages that are not on CTAN. The plain `texlive/texlive` image does not
-ship them; switch to [`danteev/texlive`](https://github.com/dante-ev/docker-texlive)
-(Docker Hub `danteev/texlive`, mirror `ghcr.io/dante-ev/texlive`). It is
-the Island of TeX `full` image plus:
+ship them; use [`danteev/texlive`](https://github.com/dante-ev/docker-texlive),
+maintained by DANTE e.V., the German-speaking TeX users group
+(Docker Hub `danteev/texlive`, mirror `ghcr.io/dante-ev/texlive`).
+For PlantUML it is the only choice; for the other tools below, switch when
+a build in `texlive/texlive` fails on a missing program. It is the Island
+of TeX `full` image plus:
 
 | Need | Tool in the image |
 | --- | --- |
@@ -210,6 +222,11 @@ Facts that differ from `texlive/texlive`:
   `C.UTF-8`. Everything above about engines and build tools applies.
 - **`/etc/latexmkrc`** makes `latexmk` ignore luaotfload's font caches so
   a LuaLaTeX build does not get an extra rerun in every fresh container.
+
+PlantUML in the image: `PLANTUML_JAR` is set, so the `plantuml` package
+finds the jar without configuration; it needs LuaLaTeX and
+`-shell-escape`. The rendered diagrams land next to the source as
+`<jobname>-plantuml.*` files.
 
 Shell escape is required for PlantUML, Mermaid, Gnuplot, SVG, and minted:
 
