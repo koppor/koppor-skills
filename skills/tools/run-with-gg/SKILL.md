@@ -1,6 +1,6 @@
 ---
 name: run-with-gg
-description: Run a CLI that is not installed — Java, Node.js, Gradle, Maven, JBang, or any GitHub release binary or jar such as typos, Vale, or TeXtidote — through gg.cmd, without installing it, on Windows, macOS, and Linux. Use when a command is not found, or a task needs a specific Java or tool version.
+description: Run a CLI that is not installed — Java, Node.js, Gradle, Maven, JBang scripts and catalog aliases, or any GitHub release binary or jar such as typos, Vale, or TeXtidote — through gg.cmd, without installing it, on Windows, macOS, and Linux. Use when a command is not found, a jar or JBang script should run without installing Java or JBang, or a task needs a specific Java or tool version.
 license: MIT
 ---
 
@@ -49,8 +49,44 @@ sh ./gg.cmd gh/crate-ci/typos@1.51.1 --format brief .
   architecture, e.g., `gh/errata-ai/vale@3.24.0`. A release that ships a jar runs on Java:
   `gh/sylvainhalle/textidote@v0.9:java@21`.
 - **Chains**: `tool@version:java@21` runs `tool` with that Java on `PATH`.
+- **Any command with a tool on `PATH`**: `run:java@17 <command>` runs `<command>` (for
+  example a program's own start script) with Java 17 on `PATH`.
+- **Java variants**: tags select or exclude a build, e.g., `java@-jdk+jre` (a JRE instead
+  of a JDK); others are `+fx` (with JavaFX), `+lts`, and `+ea`.
 - **Versions**: `@21` (any 21.x.y), `@21.0` (any 21.0.z), `@21.0.4` (exact), `@^1.2.0`,
   `@~1.2.0`.
+
+## JBang without installing it
+
+`gg.cmd jbang` brings JBang and the Java the script asks for: gg reads the script's
+`//JAVA` line (`//JAVA 17` gets Java 17). Everything JBang runs works this way:
+
+```sh
+sh ./gg.cmd jbang script.java
+sh ./gg.cmd jbang do@koppor/magic-merge-commit 42
+sh ./gg.cmd jbang https://github.com/<owner>/<repo>/releases/download/<tag>/<tool>.jar --help
+sh ./gg.cmd jbang <group>:<artifact>:<version> --help
+```
+
+```powershell
+.\gg.cmd jbang script.java
+.\gg.cmd jbang do@koppor/magic-merge-commit 42
+.\gg.cmd jbang https://github.com/<owner>/<repo>/releases/download/<tag>/<tool>.jar --help
+.\gg.cmd jbang <group>:<artifact>:<version> --help
+```
+
+- **Script**: a local `.java` file or its URL; `//DEPS` lines fetch the dependencies.
+- **Catalog alias**: `<alias>@<owner>/<repo>` reads `jbang-catalog.json` from that GitHub
+  repository.
+- **Jar**: by URL or as Maven coordinates; the jar needs a `Main-Class` in its manifest, or
+  pass `--main <class>`.
+- **Choose: `gh/` or JBang?** For a release that ships one runnable jar, both work.
+  `gh/<owner>/<repo>@<tag>:java@21` finds the asset itself; `jbang <url>` needs the exact
+  asset URL but also takes Maven coordinates, `//DEPS`, and catalogs.
+- **Trust question.** For a script, catalog, or jar from a source not yet trusted, JBang
+  asks once whether to trust it, in the terminal or in a desktop dialog. The user answers
+  it; do not trust on their behalf. Without a terminal or dialog, run
+  `jbang trust add <url-prefix>` after the user agrees.
 
 ## What goes wrong
 
