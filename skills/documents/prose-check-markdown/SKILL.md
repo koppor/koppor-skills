@@ -145,3 +145,11 @@ deliberately left.
   (`Packages`, `BasedOnStyles`, `MinAlertLevel`), then `vale sync`.
 - A repo can carry its own `.textlintrc`/`.vale.ini`; point the tools at those to honor
   project conventions.
+
+## Same checks in the editor
+
+VS Code has extensions for LanguageTool (LTeX+), markdownlint, Vale, textlint, and typos.
+They keep their own word lists and settings: LTeX+'s "Add to dictionary" writes to the
+user settings, not to the repository's `.aspell.<lang>.pws`, so editor and runner drift
+apart. When the user works in VS Code, or reports findings the runner does not show (or
+the other way round), follow [vscode.md](references/vscode.md) to align them.
