@@ -12,7 +12,7 @@ skills/<category>/<skill-name>/SKILL.md
 ```
 
 - **Category** — a topic folder directly under `skills/`. Current: `documents`, `git`,
-  `tex`, `tools`, `jabref` (planned), `research` (planned). Add a new one by creating the folder and
+  `notations`, `tex`, `tools`, `jabref` (planned), `research` (planned). Add a new one by creating the folder and
   listing it in [README.md](README.md).
 - **Skill name** — kebab-case. The folder name **must equal** the `name:` in the
   frontmatter.

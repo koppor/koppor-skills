@@ -1,7 +1,7 @@
 # koppor-skills
 
 A curated collection of [Claude Code](https://claude.com/claude-code) **skills** for
-document, TeX, JabRef, and research workflows. Skills are grouped into categories under
+document, TeX, notation, JabRef, and research workflows. Skills are grouped into categories under
 `skills/<category>/<skill>/` and each is a self-contained `SKILL.md` (plus optional
 scripts, assets, and references). The primary audience is the author, but every skill is
 written to be agent-agnostic and reusable by anyone.
@@ -17,6 +17,7 @@ written to be agent-agnostic and reusable by anyone.
 | `tex` | [`read-tex-log`](skills/tex/read-tex-log/SKILL.md) | Summarize LaTeX `.log` files (errors, boxes, undefined refs/cites) with **texlogsieve**. |
 | `tools` | [`run-with-gg`](skills/tools/run-with-gg/SKILL.md) | Run Java, Node.js, Gradle, **JBang** scripts and catalogs, or any GitHub release binary or jar without installing it, with **gg.cmd**. |
 | `git` | [`magic-merge-commit`](skills/git/magic-merge-commit/SKILL.md) | Fix merge conflicts of a stacked pull request after its base branch was **squash-merged** into `main`, with a "magic" merge commit built by **jbang**. |
+| `notations` | [`fmc`](skills/notations/fmc/SKILL.md) | Draw **FMC block diagrams** (agents, storages, channels, accesses) as native **PowerPoint** shapes with **python-pptx**, from a `.pptx` stencil or a Python library, exactly as on the FMC reference sheet. |
 | `jabref` | _(planned)_ | BibTeX/biblatex management, `jabkit`, PDF → BibTeX. |
 | `research` | _(planned)_ | Literature and research-workflow helpers. |
 
