@@ -17,3 +17,7 @@ Thumbs.db
 # CodeGraph index (local, not project content)
 .codegraph/
 .code-review-graph/
+
+# Python
+__pycache__/
+*.pyc
