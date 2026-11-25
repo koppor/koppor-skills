@@ -1,0 +1,40 @@
+name: Check LaTeX package index
+
+# choose-latex-package indexes the GADR records and snippet pages of the latextemplates org.
+# Fail when either repo gained an entry the index does not link yet.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  push:
+    paths:
+      - skills/tex/choose-latex-package/**
+      - .github/workflows/check-latex-package-index.yml
+  pull_request:
+    paths:
+      - skills/tex/choose-latex-package/**
+      - .github/workflows/check-latex-package-index.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare with gadr-latex-packages and latex-snippets
+        run: |
+          git clone -q --depth 1 https://github.com/latextemplates/gadr-latex-packages.git /tmp/gadr
+          git clone -q --depth 1 https://github.com/latextemplates/latex-snippets.git /tmp/snippets
+          skill=skills/tex/choose-latex-package/SKILL.md
+          missing=0
+          for f in /tmp/gadr/*.md; do
+            f=$(basename "$f")
+            case "$f" in AGENTS.md|CLAUDE.md|CONTRIBUTING.md|README.md) continue ;; esac
+            grep -qF "gadr-latex-packages/blob/main/$f)" "$skill" || { echo "::error::GADR record $f not in index"; missing=1; }
+          done
+          for s in $(sed -n '/^export const snippets/,$p' /tmp/snippets/snippets.config.mjs | sed -nE 's/^  "?([a-z0-9-]+)"?: \{.*/\1/p'); do
+            grep -qF "latex-snippets/snippets/$s)" "$skill" || { echo "::error::Snippet $s not in index"; missing=1; }
+          done
+          exit $missing
