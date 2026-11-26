@@ -1,0 +1,133 @@
+% uml-tikz.sty -- TikZ styles for UML 2.5.1 diagrams (koppor-skills, MIT licence)
+%
+% Every style follows the notation clauses of OMG UML 2.5.1 (formal/17-12-05);
+% the clause is given next to each style. Render the spec figure and compare
+% element by element before calling a diagram done.
+%
+% Usage:  \usepackage{uml-tikz}
+%         \begin{tikzpicture}[uml]  ...  \end{tikzpicture}
+%
+% Arrowheads (the part agents get wrong most often):
+%   open head   = two strokes, Straight Barb, NOT a hollow triangle
+%   filled head = Triangle, same length and width as the open head
+%   hollow triangle (generalization, realization) is a separate, larger tip
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{uml-tikz}[2026/11/26 v1.0 UML 2.5.1 styles for TikZ]
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta, shapes.geometric, shapes.multipart, calc, decorations.markings}
+
+% Sizes. Open and filled heads share length and width on purpose.
+\newcommand{\umlheadlength}{1.9mm}
+\newcommand{\umlheadwidth}{1.7mm}
+
+\tikzset{
+  % ------------------------------------------------------------ picture
+  uml/.style={x=1mm, y=1mm, line width=0.45pt, font=\sffamily\scriptsize},
+  % ------------------------------------------------------------ tips
+  uml open tip/.tip={Straight Barb[length=\umlheadlength, width=\umlheadwidth]},
+  uml filled tip/.tip={Triangle[length=\umlheadlength, width=\umlheadwidth]},
+  uml hollow triangle tip/.tip={Triangle[open, length=2.5mm, width=2.7mm, fill=white]},
+  uml hollow diamond tip/.tip={Diamond[open, length=3.4mm, width=2.1mm, fill=white]},
+  uml filled diamond tip/.tip={Diamond[length=3.4mm, width=2.1mm]},
+  uml dashed/.style={dash pattern=on 1.8pt off 1.3pt},
+  % small x on an association end: not navigable (§11.5.4, Fig. 11.29 pair CD)
+  uml x at end/.style={postaction={decorate, decoration={markings,
+      mark=at position -1.6mm with {\draw[solid, line width=0.45pt] (-0.8mm,-0.8mm) -- (0.8mm,0.8mm) (-0.8mm,0.8mm) -- (0.8mm,-0.8mm);}}}},
+  uml x at start/.style={postaction={decorate, decoration={markings,
+      mark=at position 1.6mm with {\draw[solid, line width=0.45pt] (-0.8mm,-0.8mm) -- (0.8mm,0.8mm) (-0.8mm,0.8mm) -- (0.8mm,-0.8mm);}}}},
+  % ------------------------------------------------------------ class diagram edges
+  % Association: solid line, no head = navigability unspecified (§11.5.4, Fig. 11.29 pair EF)
+  uml association/.style={-},
+  % navigable end: open head at the end (§11.5.4)
+  uml navigable/.style={-{uml open tip}},
+  % both ends navigable: two open heads (Fig. 11.29 pair AB)
+  uml navigable both/.style={{uml open tip}-{uml open tip}},
+  % one end navigable, the other explicitly not (Fig. 11.29 pair GH): path from the x end to the head end
+  uml navigable one way/.style={-{uml open tip}, uml x at start},
+  % Dependency: dashed, open head at the supplier (§7.7.4, Fig. 7.18); «use» etc. as a label
+  uml dependency/.style={uml dashed, -{uml open tip}},
+  % Generalization: solid, hollow triangle at the general classifier (§9.2.4.2)
+  uml generalization/.style={-{uml hollow triangle tip}},
+  % Realization / InterfaceRealization: dashed, hollow triangle at the realized element (§7.7.4, §10.4.4, Fig. 10.11)
+  uml realization/.style={uml dashed, -{uml hollow triangle tip}},
+  % Aggregation / composition: diamond at the WHOLE; draw the path from the whole to the part (§11.5.4)
+  uml aggregation/.style={{uml hollow diamond tip}-},
+  uml composition/.style={{uml filled diamond tip}-},
+  uml composition navigable/.style={{uml filled diamond tip}-{uml open tip}},
+  % ------------------------------------------------------------ behaviour edges
+  % ActivityEdge and Transition: solid line with an open head (§15.2.4, Fig. 15.5; §14.2.4.8)
+  uml flow/.style={-{uml open tip}},
+  % Messages (§17.4.4.1)
+  uml sync/.style={-{uml filled tip}},
+  uml async/.style={-{uml open tip}},
+  uml reply/.style={uml dashed, -{uml open tip}},
+  uml create/.style={uml dashed, -{uml open tip}},
+  % Use cases: «include» from base to included, «extend» from extension to extended (§18.1.4)
+  uml include/.style={uml dependency},
+  uml extend/.style={uml dependency},
+  % ------------------------------------------------------------ nodes
+  uml label/.style={font=\sffamily\tiny, inner sep=0.4mm},
+  % simple class or object box; for compartments use uml class
+  uml box/.style={draw, rectangle, inner sep=0.9mm, align=center, fill=white},
+  uml class/.style={draw, rectangle split, rectangle split parts=3, inner sep=0.9mm, fill=white,
+    rectangle split part align={center, left, left}},
+  uml class2/.style={uml class, rectangle split parts=2},
+  uml usecase/.style={ellipse, draw, inner sep=0.4mm, minimum height=7mm, minimum width=16mm, align=center, fill=white},
+  uml action/.style={draw, rounded corners=1.5mm, inner sep=1mm, minimum height=5.5mm, align=center, fill=white},
+  uml state/.style={draw, rounded corners=1.5mm, inner sep=1mm, minimum height=5.5mm, minimum width=11mm, align=center, fill=white},
+  uml initial/.style={circle, fill, draw, inner sep=0pt, minimum size=2.4mm},
+  uml final/.style={circle, draw, inner sep=0pt, minimum size=3.4mm, fill=white,
+    label={[circle, fill, inner sep=0pt, minimum size=2.1mm]center:{}}},
+  uml flow final/.style={circle, draw, inner sep=0pt, minimum size=3.4mm, fill=white,
+    path picture={\draw ($(path picture bounding box.center)+(-1.2mm,-1.2mm)$) -- ($(path picture bounding box.center)+(1.2mm,1.2mm)$)
+                        ($(path picture bounding box.center)+(-1.2mm,1.2mm)$) -- ($(path picture bounding box.center)+(1.2mm,-1.2mm)$);}},
+  uml decision/.style={diamond, draw, inner sep=0pt, minimum width=3.6mm, minimum height=4.6mm, fill=white},
+  uml bar/.style={fill, draw, inner sep=0pt, minimum width=0.9mm, minimum height=11mm},
+  uml hbar/.style={fill, draw, inner sep=0pt, minimum width=11mm, minimum height=0.9mm},
+  uml activation/.style={draw, fill=white, inner sep=0pt, minimum width=1.8mm},
+  % stick-figure actor, feet at the pic origin, 7.4 mm high (§18.1.4, Fig. 18.6)
+  uml actor/.pic={
+    \draw (0,6.4) circle (1.0);
+    \draw (0,5.4) -- (0,2.6);
+    \draw (-1.8,4.5) -- (1.8,4.5);
+    \draw (0,2.6) -- (-1.5,0) (0,2.6) -- (1.5,0);
+  },
+}
+
+% Instance name: underlined "name : Type", plain face, not bold (§9.8.4, Fig. 9.29-9.32).
+% \umlinstance{b1}{Booking} -> b1 : Booking;  \umlinstance{}{Booking} -> :Booking
+\newcommand{\umlinstance}[2]{\underline{\ifx\relax#1\relax\else#1 \fi:\ifx\relax#1\relax\else\ \fi#2}}
+% Keyword or stereotype in guillemets, plain face (§9.2.4.1, Annex C)
+\newcommand{\umlkw}[1]{\guillemotleft#1\guillemotright}
+% Name compartment: optional keyword in plain face above the bold name; abstract: \textit inside
+% \umlname[interface]{Notifier}
+\newcommand{\umlname}[2][]{\begin{tabular}{@{}c@{}}\uml@keyword{#1}\textbf{#2}\end{tabular}}
+\newcommand{\uml@keyword}[1]{\ifx\relax#1\relax\expandafter\@gobble\else\expandafter\@firstofone\fi{\umlkw{#1}\\}}
+
+% Lifeline: head box and dashed line (§17.3.4.1). The head text is NOT underlined (Fig. 17.14, 17.26).
+% \umllifeline{id}{head text}{x}{y top}{y bottom}
+\newcommand{\umllifeline}[5]{%
+  \node[uml box, anchor=north] (#1) at (#3,#4) {#2};
+  \draw[uml dashed] (#1.south) -- (#3,#5);}
+% Execution specification: thin white rectangle on the lifeline (§17.2.4.4).  \umlactivation{x}{y top}{y bottom}
+\newcommand{\umlactivation}[3]{%
+  \draw[fill=white] ($(#1,#2)+(-0.9,0)$) rectangle ($(#1,#3)+(0.9,0)$);}
+% Combined fragment: rectangle, operator in a pentagon at the top left (§17.6.4).
+% \umlfragment{x1}{y1}{x2}{y2}{operator}
+\newcommand{\umlfragment}[5]{%
+  \draw (#1,#2) rectangle (#3,#4);
+  \node[anchor=north west, inner sep=0.6mm, font=\sffamily\tiny\bfseries] (umlfragop) at (#1,#2) {#5};
+  \draw (umlfragop.north east) -- ($(umlfragop.south east)+(0,0.9)$) -- ($(umlfragop.south east)+(-0.9,0)$) -- (umlfragop.south west);}
+% Comment (note) with a folded corner (§7.2.4).  \umlnote{id}{position}{text}
+\newcommand{\umlnote}[3]{%
+  \node[inner sep=1mm, inner xsep=1.8mm, align=left, font=\sffamily\tiny, anchor=center] (#1) at (#2) {#3};
+  \draw[fill=white] (#1.south west) -- (#1.south east) -- ($(#1.north east)+(0,-1.4)$) -- ($(#1.north east)+(-1.4,0)$) -- (#1.north west) -- cycle;
+  \draw ($(#1.north east)+(-1.4,0)$) |- ($(#1.north east)+(0,-1.4)$);
+  \node[inner sep=1mm, align=left, font=\sffamily\tiny] at (#1) {#3};}
+% Rake symbol inside a CallBehaviorAction (§16.3.4.1, Fig. 16.15).  \umlrake{position of the top}
+\newcommand{\umlrake}[1]{%
+  \begin{scope}[shift={(#1)}]
+    \draw (0,0) -- (0,-0.8) (-0.9,-0.8) -- (0.9,-0.8) (-0.9,-0.8) -- (-0.9,-1.8) (0,-0.8) -- (0,-1.8) (0.9,-0.8) -- (0.9,-1.8);
+  \end{scope}}
+
+\endinput

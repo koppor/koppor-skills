@@ -1,0 +1,166 @@
+% Example for uml-tikz.sty: every style once, on a small appointment-booking model.
+% Build: latexmk -lualatex uml-tikz-example.tex   (see SKILL.md for the Docker command)
+\documentclass[10pt]{article}
+\usepackage[a4paper, margin=15mm]{geometry}
+\usepackage{fontspec}
+\usepackage{uml-tikz}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\newcommand{\demo}[1]{\par\smallskip{\small\bfseries #1}\par\smallskip}
+
+\begin{document}
+
+{\Large\bfseries uml-tikz.sty: all styles}\par\medskip
+Notation: OMG UML 2.5.1 (formal/17-12-05). Clause and figure next to each element.
+
+\demo{Class diagram edges (§7.7.4, §9.2.4.2, §10.4.4, §11.5.4; Fig.\ 7.18, 9.2, 10.11, 11.29, 11.33)}
+\begin{tikzpicture}[uml]
+  \foreach \y/\style/\text in {
+      0/uml association/{association, navigability unspecified},
+      -7/uml navigable/{association, B end navigable},
+      -14/uml navigable both/{association, both ends navigable},
+      -21/uml navigable one way/{A end not navigable (x), B end navigable},
+      -28/uml dependency/{dependency (use the keyword as a label)},
+      -35/uml generalization/{generalization: A is a B},
+      -42/uml realization/{realization: A realizes B},
+      -49/uml aggregation/{shared aggregation: A is the whole},
+      -56/uml composition/{composite aggregation: A is the whole},
+      -63/uml composition navigable/{composition, part end navigable}} {
+    \node[uml box, minimum width=10mm] (a) at (0,\y) {\textbf{A}};
+    \node[uml box, minimum width=10mm] (b) at (40,\y) {\textbf{B}};
+    \draw[\style] (a) -- (b);
+    \node[anchor=west] at (50,\y) {\texttt{\style}: \text};
+  }
+\end{tikzpicture}
+
+\demo{Behaviour edges (§15.2.4, §14.2.4.8, §17.4.4.1; Fig.\ 15.5, 17.3, 17.14)}
+\begin{tikzpicture}[uml]
+  \foreach \y/\style/\text in {
+      0/uml flow/{activity edge, transition},
+      -6/uml sync/{synchronous message: filled head},
+      -12/uml async/{asynchronous message: open head},
+      -18/uml reply/{reply message: dashed},
+      -24/uml create/{create message: dashed, open head},
+      -30/uml include/{use case «include» / «extend»}} {
+    \draw[\style] (0,\y) -- (40,\y);
+    \node[anchor=west] at (50,\y) {\texttt{\style}: \text};
+  }
+\end{tikzpicture}
+
+\demo{Class diagram (§9.2.4, §9.5.4, §11.5.4)}
+\begin{tikzpicture}[uml]
+  \node[uml class] (prac) at (0,0) {\textbf{Practice}\nodepart{two}\ttfamily - name: String\nodepart{three}\ttfamily + book(p: Patient): Appointment};
+  \node[uml class] (appt) at (62,0) {\textbf{Appointment}\nodepart{two}\ttfamily\begin{tabular}{@{}l@{}}- start: LocalDateTime\\- free: Boolean = true\end{tabular}\nodepart{three}\ttfamily + cancel()};
+  \node[uml box] (pat) at (110,0) {\textbf{Patient}};
+  \node[uml box] (pers) at (110,16) {\textbf{\textit{Person}}};
+  \node[uml class2] (notif) at (62,-30) {\umlname[interface]{Notifier}\nodepart{two}\ttfamily + send(text: String)};
+  \node[uml box] (mail) at (40,-52) {\textbf{MailNotifier}};
+  \node[uml box] (sms) at (84,-52) {\textbf{SmsNotifier}};
+  \draw[uml composition] (prac) -- (appt)
+     node[pos=0.17, above, uml label] {1} node[pos=0.88, above, uml label] {*};
+  \draw[uml navigable] (appt) -- (pat)
+     node[pos=0.15, above, uml label] {*} node[pos=0.8, above, uml label] {0..1}
+     node[pos=0.8, below, uml label] {patient};
+  \draw[uml generalization] (pat) -- (pers);
+  \draw[uml dependency] (appt) -- node[right, uml label] {\umlkw{use}} (notif);
+  \draw[uml realization] (mail.north) -- ($(notif.south)+(-6,0)$);
+  \draw[uml realization] (sms.north) -- ($(notif.south)+(6,0)$);
+\end{tikzpicture}
+
+\demo{Object diagram (§9.8.4; Fig.\ 9.29, 9.30)}
+\begin{tikzpicture}[uml]
+  \node[uml class2] (p) at (0,0) {\umlinstance{p}{Practice}\nodepart{two}name = "Riverside"};
+  \node[uml class2] (a1) at (45,0) {\umlinstance{a1}{Appointment}\nodepart{two}free = false};
+  \node[uml box] (x) at (90,0) {\umlinstance{}{Patient}};
+  \draw (p) -- (a1);
+  \draw (a1) -- node[pos=0.8, below, uml label] {patient} (x);
+\end{tikzpicture}
+
+\clearpage
+\demo{Sequence diagram (§17.2.4.4, §17.3.4.1, §17.4.4.1, §17.6.4; Fig.\ 17.14). Lifeline heads are not underlined.}
+\begin{tikzpicture}[uml]
+  \pic at (4,-8) {uml actor};
+  \node[below, inner sep=0.4mm] at (4,-8) {Patient};
+  \draw[uml dashed] (4,-11.4) -- (4,-44);
+  \umllifeline{svc}{:BookingService}{40}{-1.5}{-44}
+  \umllifeline{mail}{:MailNotifier}{100}{-1.5}{-44}
+  \umlactivation{40}{-13}{-41}
+  \draw[uml sync] (4,-13) -- node[above, uml label] {book(slot)} (39.1,-13);
+  \draw[uml sync] (40.9,-16) -- (46,-16) -- (46,-19) -- (40.9,-19);
+  \node[uml label, anchor=west] at (46.5,-17.5) {reserve(slot)};
+  \node[uml box] (b) at (70,-24) {b:Booking};
+  \draw[uml dashed] (b.south) -- (70,-44);
+  \draw[uml create] (40.9,-24) -- node[above, uml label] {new} (b.west);
+  \umlfragment{30}{-28}{110}{-37}{opt}
+  \node[uml label, anchor=west] at (41,-30.5) {[mail address known]};
+  \draw[uml async] (40.9,-34) -- node[above, uml label, pos=0.7] {confirm(b)} (100,-34);
+  \draw[uml reply] (39.1,-41) -- node[above, uml label] {book: b} (4,-41);
+\end{tikzpicture}
+
+\demo{Activity diagram (§15.3.4, §16.2.4.1, §16.3.4.1; Fig.\ 15.27--15.33, 16.15)}
+\begin{tikzpicture}[uml]
+  \node[uml initial] (i) at (0,0) {};
+  \node[uml action] (s) at (16,0) {Search free\\slots};
+  \node[uml decision] (d) at (32,0) {};
+  \node[uml action] (c) at (46,8) {Choose slot};
+  \node[uml action] (n) at (46,-8) {Show notice};
+  \node[uml flow final] (ff) at (62,-8) {};
+  \node[uml bar, minimum height=16mm] (f) at (60,8) {};
+  \node[uml action, minimum width=22mm, minimum height=7mm] (r) at (76,14) {Reserve slot};
+  \umlrake{$(r.south east)+(-2.6,2.6)$}
+  \node[uml action] (e) at (76,2) {Send mail};
+  \node[uml bar, minimum height=16mm] (j) at (92,8) {};
+  \node[uml final] (af) at (100,8) {};
+  \draw[uml flow] (i) -- (s);
+  \draw[uml flow] (s) -- (d);
+  \draw[uml flow] (d.north) |- node[pos=0.25, left, uml label] {[found]} (c.west);
+  \draw[uml flow] (d.south) |- node[pos=0.25, left, uml label] {[else]} (n.west);
+  \draw[uml flow] (n) -- (ff);
+  \draw[uml flow] (c) -- (f);
+  \draw[uml flow] (f.east |- r.west) -- (r.west);
+  \draw[uml flow] (f.east |- e.west) -- (e.west);
+  \draw[uml flow] (r.east) -- (j.west |- r.east);
+  \draw[uml flow] (e.east) -- (j.west |- e.east);
+  \draw[uml flow] (j) -- (af);
+  \node[uml label, anchor=west] at (103,8) {activity final: ends the activity};
+  \node[uml label, anchor=west] at (65,-8) {flow final: ends this flow only};
+\end{tikzpicture}
+
+\demo{State machine (§14.2.4.4--§14.2.4.8; Fig.\ 14.17, 14.18)}
+\begin{tikzpicture}[uml]
+  \node[uml initial] (i) at (0,0) {};
+  \node[uml state] (f) at (14,0) {free};
+  \node[uml state] (b) at (70,0) {booked};
+  \node[uml final] (x) at (104,0) {};
+  \draw[uml flow] (i) -- (f);
+  \draw[uml flow] (f) -- node[above, uml label] {book(p) [p.registered] / reserve} (b);
+  \draw[uml flow] (b.south) -- ++(0,-6) -| node[pos=0.25, below, uml label] {cancel} (f.south);
+  \draw[uml flow] (b) -- node[above, uml label] {after 1 day} (x);
+\end{tikzpicture}
+
+\demo{Use case diagram (§18.1.4, §11.5.4; Fig.\ 18.2--18.7)}
+\begin{tikzpicture}[uml]
+  \draw (20,12) rectangle (100,-22);
+  \node[anchor=north west, inner sep=0.8mm] at (20,12) {\textbf{Booking app}};
+  \pic at (4,-4) {uml actor};
+  \node[below, inner sep=0.4mm] at (4,-4) {Patient};
+  \node[uml usecase] (bk) at (40,0) {Book\\appointment};
+  \node[uml usecase] (id) at (82,0) {Identify\\patient};
+  \node[uml usecase] (rm) at (40,-15) {Send SMS\\reminder};
+  \node[uml box] (gw) at (122,-15) {\umlname[actor]{SMS gateway}};
+  \draw (6.5,0) -- (bk.west);
+  \draw[uml include] (bk) -- node[above, uml label] {\umlkw{include}} (id);
+  \draw[uml extend] (rm) -- node[right, uml label] {\umlkw{extend}} (bk);
+  \draw (rm.east) -- (gw.west);
+\end{tikzpicture}
+
+\demo{Communication diagram (§17.4.4.1, §17.9; Fig.\ 17.26). Lifelines again without underline.}
+\begin{tikzpicture}[uml]
+  \node[uml box] (s) at (0,0) {:BookingService};
+  \node[uml box] (m) at (50,0) {:MailNotifier};
+  \draw (s) -- (m);
+  \draw[uml async] (20,1.6) -- (30,1.6);
+  \node[uml label, anchor=south] at (25,2.2) {1: confirm(b)};
+\end{tikzpicture}
+
+\end{document}
