@@ -15,6 +15,13 @@ of OMG UML 2.5.1 (formal/17-12-05, https://www.omg.org/spec/UML/2.5.1/PDF):
     synchronous message   solid line, filled head                message(kind="sync")
     asynchronous message  solid line, open head                  message(kind="async")
     reply, create         dashed line, open head                 message(kind="reply" | "create")
+    provided interface    circle (ball) on a solid line          provided_interface()
+    required interface    half circle (socket) on a solid line   required_interface()
+    assembly connector    ball in socket between simple ports    assembly()
+    delegation connector  solid line, no head, no keyword        delegation()
+    deployment            dashed line, open head, «deploy»       deploy()
+    manifestation         dashed line, open head, «manifest»     manifest()
+    communication path    solid line (an association)            communication_path()
 
 Arrowheads: an open head is <a:tailEnd type="arrow"/> (two strokes), a filled head
 <a:tailEnd type="triangle"/>. Both get the same w and len, so the open head is exactly as
@@ -31,6 +38,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 from dataclasses import dataclass, field
 
@@ -62,7 +70,7 @@ LABEL_SIZE = 10         # multiplicities, role names, guards, message names
 @dataclass
 class Node:
     """A drawn element with its bounding box in pt; `shape` selects how edges are clipped."""
-    shape: str                     # "rect" | "ellipse" | "diamond" | "point"
+    shape: str                     # "rect" | "ellipse" | "diamond" | "point"; a node() is the front face of its cube
     x: float
     y: float
     w: float
@@ -480,6 +488,237 @@ def fragment(slide, x, y, w, h, operator, size=None):
     return [box, tag, label(slide, x + 2, y + 1, tw - 4, th - 2, operator, size, bold=True)]
 
 
+# ------------------------------------------------- component diagram
+
+ICON = (10.0, 13.0)     # component and artifact icon in the top right corner: width, height in pt
+PORT = 8.0              # side of a port square in pt
+BALL = 6.0              # radius of the ball of a provided interface in pt
+SOCKET = 9.5            # radius of the socket of a required interface; larger, so that it wraps the ball
+
+
+def _open_path(slide, pts):
+    """Open polyline without fill (the arc of a socket); pts in pt."""
+    k = 100                       # freeform vertices are integers: work in 1/100 pt, or the arc gets corners
+    pts = [(round(x * k), round(y * k)) for x, y in pts]
+    fb = slide.shapes.build_freeform(pts[0][0], pts[0][1], scale=EMU_PER_PT / k)
+    fb.add_line_segments(pts[1:], close=False)
+    sh = fb.convert_to_shape()
+    _plain(sh, None, EDGE_WIDTH)
+    return sh
+
+
+def _component_icon(slide, x, y):
+    """Component icon: rectangle with two smaller rectangles protruding from its left side (§11.6.4).
+    (x, y) is the top left corner of the large rectangle."""
+    w, h = ICON
+    out = []
+    for bx, by, bw, bh in ((x, y, w, h), (x - w * 0.3, y + h * 0.18, w * 0.6, h * 0.2),
+                           (x - w * 0.3, y + h * 0.62, w * 0.6, h * 0.2)):
+        r = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(bx), Pt(by), Pt(bw), Pt(bh))
+        _plain(r, PAPER, 0.75)
+        out.append(r)
+    return out
+
+
+def _document_icon(slide, x, y, fold=3.5):
+    """Document icon of an artifact: sheet with a folded upper right corner (Fig. 19.9)."""
+    w, h = ICON
+    s = _polygon(slide, [(x, y), (x + w - fold, y), (x + w, y + fold), (x + w, y + h), (x, y + h)], PAPER)
+    s.line.width = Pt(0.75)
+    out = [s]
+    for p, q in (((x + w - fold, y), (x + w - fold, y + fold)), ((x + w - fold, y + fold), (x + w, y + fold))):
+        out.append(_connector(slide, p, q, width=0.75))
+    return out
+
+
+def _name_lines(name, keyword, instance):
+    """Optional «keyword» in plain face above the name; the name is bold, or underlined and plain for an
+    instance (§9.2.4.1, §9.8.4)."""
+    fmt = {"underline": True} if instance else {"bold": True}
+    return ([("«" + keyword + "»", {})] if keyword else []) + [(name, fmt)]
+
+
+def _classifier_box(slide, x, y, w, h, lines, size, compartment=None):
+    """Rectangle with the name lines centred; with `compartment` the name stands in its own compartment at
+    the top, followed by a separator and the compartment name (e.g. "internal structure")."""
+    box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(x), Pt(y), Pt(w), Pt(h))
+    _plain(box, PAPER, NODE_WIDTH)
+    out = [box]
+    if compartment is None:
+        out.append(_textbox(slide, x, y, w, h, lines, size, PP_ALIGN.CENTER))
+        return out
+    nh = len(lines) * size * 1.25 + 8
+    out.append(_textbox(slide, x, y, w, nh, lines, size, PP_ALIGN.CENTER))
+    out.append(_connector(slide, (x, y + nh), (x + w, y + nh), width=NODE_WIDTH))
+    if compartment:
+        out.append(label(slide, x, y + nh + 1, w, LABEL_SIZE * 1.3, compartment, LABEL_SIZE))
+    return out
+
+
+def component(slide, x, y, w, h, name, keyword=True, icon=True, instance=False, compartment=None, size=None):
+    """Component: classifier rectangle with the keyword «component»; optionally the component icon in the
+    right hand corner, and then the keyword may be left out (§11.6.4, Fig. 11.39). name ':Type' for a part
+    in an internal structure (Fig. 11.47). compartment="internal structure" puts the name into a
+    compartment at the top and leaves the rest of the box for parts, ports, and connectors (§11.2.4)."""
+    _check_size(f"component {name!r}", w, h)
+    if not (keyword or icon):
+        raise ValueError("a component needs the keyword «component», the icon, or both (UML 2.5.1 §11.6.4)")
+    size = size or FONT_SIZE
+    out = _classifier_box(slide, x, y, w, h, _name_lines(name, "component" if keyword else None, instance),
+                          size, compartment)
+    if icon:
+        out += _component_icon(slide, x + w - ICON[0] - 5, y + 5)
+    return Node("rect", x, y, w, h, out)
+
+
+_SIDES = {"left": (-1, 0), "right": (1, 0), "top": (0, -1), "bottom": (0, 1)}
+
+
+def _on_side(n, side, at):
+    """Point on a side of node n; at = 0..1 along the side, from the left or from the top."""
+    if side in ("left", "right"):
+        return (n.x if side == "left" else n.x + n.w, n.y + n.h * at)
+    return (n.x + n.w * at, n.y if side == "top" else n.y + n.h)
+
+
+def port(slide, owner, side, at=0.5, name=None, size=None):
+    """Port: small square overlapping the boundary of its classifier or part, the name near it
+    (§11.3.4, Fig. 11.11). side: "left" | "right" | "top" | "bottom"."""
+    cx, cy = _on_side(owner, side, at)
+    sq = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(cx - PORT / 2), Pt(cy - PORT / 2), Pt(PORT), Pt(PORT))
+    _plain(sq, PAPER, NODE_WIDTH)
+    out = [sq]
+    if name:
+        size = size or LABEL_SIZE
+        tw, th = _text_w(name, size), size * 1.3
+        d = _SIDES[side]
+        if d[0]:
+            out.append(label(slide, cx + d[0] * (PORT / 2 + 2) - (tw if d[0] < 0 else 0), cy - PORT / 2 - th, tw, th,
+                             name, size, align=PP_ALIGN.RIGHT if d[0] < 0 else PP_ALIGN.LEFT))
+        else:
+            out.append(label(slide, cx + PORT / 2 + 2, cy + d[1] * (PORT / 2 + 2) - (th if d[1] < 0 else 0), tw, th,
+                             name, size, align=PP_ALIGN.LEFT))
+    return Node("rect", cx - PORT / 2, cy - PORT / 2, PORT, PORT, out)
+
+
+def _interface_start(owner, side, at):
+    """Where the line of a ball or socket leaves its owner: the side of a port, a point on a classifier."""
+    return _on_side(owner, side, 0.5 if owner.w <= PORT + 0.01 and owner.h <= PORT + 0.01 else at)
+
+
+def _interface_label(slide, c, d, r, name, size):
+    size = size or LABEL_SIZE
+    tw, th = _text_w(name, size), size * 1.3
+    if d[0]:
+        return label(slide, c[0] - tw / 2, c[1] - r - th - 1, tw, th, name, size)
+    return label(slide, c[0] + r + 3, c[1] - th / 2, tw, th, name, size, align=PP_ALIGN.LEFT)
+
+
+def provided_interface(slide, owner, side, name=None, at=0.5, length=34, size=None):
+    """Provided interface: circle (ball, lollipop) attached by a solid line to the classifier or port that
+    realizes the interface, labelled with the interface name (§10.4.4, Fig. 10.8, 11.40). Returns the ball."""
+    d = _SIDES[side]
+    p = _interface_start(owner, side, at)
+    c = (p[0] + d[0] * (length + BALL), p[1] + d[1] * (length + BALL))
+    out = [_connector(slide, p, (c[0] - d[0] * BALL, c[1] - d[1] * BALL))]
+    o = slide.shapes.add_shape(MSO_SHAPE.OVAL, Pt(c[0] - BALL), Pt(c[1] - BALL), Pt(2 * BALL), Pt(2 * BALL))
+    _plain(o, PAPER, EDGE_WIDTH)
+    out.append(o)
+    if name:
+        out.append(_interface_label(slide, c, d, BALL, name, size))
+    return Node("ellipse", c[0] - BALL, c[1] - BALL, 2 * BALL, 2 * BALL, out)
+
+
+def _socket_arc(slide, c, d, r, steps=24):
+    """Half circle around c, open in direction d."""
+    a0 = math.atan2(d[1], d[0]) + math.pi / 2
+    return _open_path(slide, [(c[0] + r * math.cos(a0 + math.pi * k / steps), c[1] + r * math.sin(a0 + math.pi * k / steps))
+                              for k in range(steps + 1)])
+
+
+def required_interface(slide, owner, side, name=None, at=0.5, length=34, size=None):
+    """Required interface: half circle (socket) attached by a solid line to the classifier or port that
+    requires the interface; it is open on the side away from that classifier (§10.4.4, Fig. 10.10, 11.40).
+    Returns a Node at the centre of the socket, e.g. as the start of a wiring dependency() to a ball (Fig. 11.46)."""
+    d = _SIDES[side]
+    p = _interface_start(owner, side, at)
+    r = BALL + 1
+    c = (p[0] + d[0] * (length + r), p[1] + d[1] * (length + r))
+    out = [_connector(slide, p, (c[0] - d[0] * r, c[1] - d[1] * r)), _socket_arc(slide, c, d, r)]
+    if name:
+        out.append(_interface_label(slide, c, d, r, name, size))
+    return Node("point", c[0], c[1], 0, 0, out)
+
+
+def assembly(slide, requiring, providing, name=None, at=0.5, size=None):
+    """Assembly connector in ball-and-socket notation: the ball of the providing port sits in the socket of
+    the requiring port (§11.2.4, Fig. 11.8, 11.47). The spec allows it between simple ports of parts only;
+    between parts without ports use connector(), between component definitions a wiring dependency()."""
+    p, q = _ends(requiring, providing)
+    u = _unit(p, q)
+    m = (p[0] + (q[0] - p[0]) * at, p[1] + (q[1] - p[1]) * at)
+    out = [_connector(slide, p, (m[0] - u[0] * SOCKET, m[1] - u[1] * SOCKET)),
+           _socket_arc(slide, m, u, SOCKET),
+           _connector(slide, q, (m[0] + u[0] * BALL, m[1] + u[1] * BALL))]
+    o = slide.shapes.add_shape(MSO_SHAPE.OVAL, Pt(m[0] - BALL), Pt(m[1] - BALL), Pt(2 * BALL), Pt(2 * BALL))
+    _plain(o, PAPER, EDGE_WIDTH)
+    out.append(o)
+    if name:
+        out.append(_interface_label(slide, m, (1, 0) if abs(u[0]) >= abs(u[1]) else (0, 1), SOCKET, name, size))
+    return out
+
+
+# ------------------------------------------------ deployment diagram
+
+DEPTH = 10.0            # depth of the perspective cube of a node in pt
+
+
+def node(slide, x, y, w, h, name, keyword=None, instance=False, lines=(), size=None):
+    """Node: perspective view of a cube (§19.2.4, §19.4.4, Fig. 19.3, 19.14). (x, y, w, h) is the front
+    face; top and right face add DEPTH. keyword "device" or "executionEnvironment" (§19.4.4). An instance
+    is named ':AppServer' and underlined (instance=True). lines: deployed artifacts as a textual list
+    (Fig. 19.4). Draw a node before the nodes and artifacts nested in it."""
+    _check_size(f"node {name!r}", w, h)
+    size = size or FONT_SIZE
+    d = DEPTH
+    faces = _polygon(slide, [(x, y), (x + d, y - d), (x + w + d, y - d), (x + w + d, y + h - d), (x + w, y + h),
+                             (x + w, y)], PAPER)
+    faces.line.width = Pt(NODE_WIDTH)
+    front = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(x), Pt(y), Pt(w), Pt(h))
+    _plain(front, PAPER, NODE_WIDTH)
+    out = [faces, front, _connector(slide, (x + w, y), (x + w + d, y - d), width=NODE_WIDTH)]
+    head = _name_lines(name, keyword, instance)
+    nh = len(head) * size * 1.25 + 6
+    out.append(_textbox(slide, x, y, w, nh, head, size, PP_ALIGN.CENTER))
+    if lines:
+        out.append(_textbox(slide, x + 6, y + nh, w - 12, len(lines) * (size - 1) * 1.25 + 4, list(lines), size - 1,
+                            PP_ALIGN.LEFT))
+    return Node("rect", x, y, w, h, out)
+
+
+def device(slide, x, y, w, h, name, **kw):
+    """Device: node with the keyword «device» (§19.4.4, Fig. 19.12)."""
+    return node(slide, x, y, w, h, name, keyword="device", **kw)
+
+
+def execution_environment(slide, x, y, w, h, name, **kw):
+    """ExecutionEnvironment: node with the keyword «executionEnvironment» (§19.4.4, Fig. 19.13)."""
+    return node(slide, x, y, w, h, name, keyword="executionEnvironment", **kw)
+
+
+def artifact(slide, x, y, w, h, name, keyword=True, icon=True, instance=False, size=None):
+    """Artifact: class rectangle with the keyword «artifact»; a document icon may be added or replace the
+    keyword (§19.3.4, Fig. 19.9, 19.15). instance=True underlines the name (the spec allows to omit that)."""
+    _check_size(f"artifact {name!r}", w, h)
+    if not (keyword or icon):
+        raise ValueError("an artifact needs the keyword «artifact», the document icon, or both (UML 2.5.1 §19.3.4)")
+    out = _classifier_box(slide, x, y, w, h, _name_lines(name, "artifact" if keyword else None, instance),
+                          size or FONT_SIZE)
+    if icon:
+        out += _document_icon(slide, x + w - ICON[0] - 5, y + 5)
+    return Node("rect", x, y, w, h, out)
+
+
 # --------------------------------------------------------------- geometry
 
 def _ray_rect(o, d, x, y, w, h):
@@ -768,6 +1007,36 @@ def extend(slide, extension, extended, size=None):
     return dependency(slide, extension, extended, keyword="extend", size=size)
 
 
+def connector(slide, a, b, via=(), name=None, a_mult=None, b_mult=None, size=None):
+    """Connector between parts or ports of an internal structure: drawn like an association, a solid line
+    (§11.2.4, Fig. 11.4, 11.5)."""
+    return association(slide, a, b, via=via, name=name, a_mult=a_mult, b_mult=b_mult, size=size)
+
+
+def delegation(slide, outer_port, inner, via=()):
+    """Delegation connector from a port on the boundary to a part, a port of a part, or its ball or socket:
+    a plain solid line (§11.2.4, §11.3.3, Fig. 11.47, 11.48). UML 2.5.1 defines no arrowhead and no keyword
+    «delegate» for it; that was the notation up to UML 2.4.1."""
+    return edge(slide, outer_port, inner, via)
+
+
+def deploy(slide, deployed_artifact, target, via=(), keyword=True, size=None):
+    """Deployment drawn outside the node: dashed line, open head at the deployment target, «deploy»
+    (§19.2.4, §19.4.4, Fig. 19.3, 19.15). Nesting the artifact in the node says the same without an arrow."""
+    return dependency(slide, deployed_artifact, target, "deploy" if keyword else None, via, size)
+
+
+def manifest(slide, artifact_, element, via=(), size=None):
+    """Manifestation: dashed line, open head, «manifest», from the artifact to the element it embodies,
+    e.g. a component (§19.3.4, Fig. 19.10)."""
+    return dependency(slide, artifact_, element, "manifest", via, size)
+
+
+def communication_path(slide, a, b, via=(), a_mult=None, b_mult=None, name=None, size=None):
+    """CommunicationPath between nodes: an association, i.e. a solid line (§19.4.4, Fig. 19.12, 19.15)."""
+    return association(slide, a, b, via=via, name=name, a_mult=a_mult, b_mult=b_mult, size=size)
+
+
 def communication_message(slide, a, b, text, at=0.5, offset=8, length=26, size=None, reverse=False):
     """Message in a communication diagram: small arrow with an open head parallel to the link,
     sequence number and name beside it (§17.4.4.1, Fig. 17.26)."""
@@ -805,7 +1074,8 @@ def group(slide, *items):
 def check(pptx_path):
     """Problems that python-pptx writes without complaint: sizes below zero (PowerPoint refuses the
     file), line ends that have no meaning in UML (stealth, diamond, oval: draw diamonds and hollow
-    triangles as shapes), and open and filled heads of different size on one slide."""
+    triangles as shapes), open and filled heads of different size on one slide, and keywords written as
+    <<keyword>> instead of «keyword» (Annex C)."""
     prs = Presentation(pptx_path)
     a = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
     findings = []
@@ -813,6 +1083,11 @@ def check(pptx_path):
         for el in slide._element.iter(a + "ext"):
             if int(el.get("cx", 0)) < 0 or int(el.get("cy", 0)) < 0:
                 findings.append({"slide": idx, "rule": "negative-size", "detail": f"cx={el.get('cx')} cy={el.get('cy')}"})
+        for para in slide._element.iter(a + "p"):
+            text = "".join(t.text or "" for t in para.iter(a + "t"))
+            for m in re.finditer(r"<<\s*[A-Za-z][A-Za-z ]*>>", text):
+                findings.append({"slide": idx, "rule": "ascii-guillemets",
+                                 "detail": f"{m.group(0)}: keywords and stereotypes stand in guillemets «…»"})
         sizes = {}
         for tag in ("headEnd", "tailEnd"):
             for el in slide._element.iter(a + tag):
@@ -847,7 +1122,8 @@ def demo(out_path):
     prs = new_presentation()
     props = prs.core_properties
     props.title, props.author, props.last_modified_by = "UML 2.5.1 notation examples", "uml_pptx.py", "uml_pptx.py"
-    props.keywords = "UML, class diagram, sequence diagram, activity diagram, state machine, use case"
+    props.keywords = ("UML, class diagram, sequence diagram, activity diagram, state machine, use case, "
+                      "component diagram, deployment diagram")
 
     # 1 --- class diagram edges
     s = blank_slide(prs)
@@ -968,6 +1244,53 @@ def demo(out_path):
     communication_message(s, c1, c2, "1: confirm(b)")
     label(s, 40, 460, 880, 30, "Communication diagram: link between lifelines (not underlined), small open arrow "
           "with sequence number beside it.", 11, align=PP_ALIGN.LEFT)
+
+    # 6 --- component diagram
+    s = blank_slide(prs)
+    _title(s, "UML component diagram")
+    bs = component(s, 150, 76, 170, 50, "BookingService")
+    provided_interface(s, bs, "left", "Booking")
+    sock = required_interface(s, bs, "right", "Notification")
+    no = component(s, 560, 76, 140, 50, "Notifier")
+    ball = provided_interface(s, no, "left", "Notification")
+    dependency(s, sock, ball)
+    cal = component(s, 760, 76, 130, 50, "Calendar", icon=False)
+    dependency(s, no, cal)
+    label(s, 40, 136, 880, 30, "Provided interface: ball. Required interface: socket, open away from its component. "
+          "Wiring between components: dependency from the socket to the ball.", 11, align=PP_ALIGN.LEFT)
+
+    app = component(s, 150, 190, 700, 250, "BookingApp", compartment="internal structure")
+    p_bs = component(s, 300, 310, 190, 54, ":BookingService")
+    p_no = component(s, 640, 310, 150, 54, ":Notifier")
+    outer = port(s, app, "left", at=(337 - 190) / 250)
+    provided_interface(s, outer, "left", "Booking")
+    p1 = port(s, p_bs, "left")
+    inner = provided_interface(s, p1, "left", "Booking", length=30)
+    delegation(s, outer, inner)
+    p2 = port(s, p_bs, "right")
+    p3 = port(s, p_no, "left")
+    assembly(s, p2, p3, "Notification")
+    label(s, 40, 450, 880, 44, "Internal structure: ports are small squares on the boundary. Delegation connector "
+          "(outer port to the ball of the part): solid line, no head, no keyword. Assembly connector between "
+          "simple ports: ball in socket.", 11, align=PP_ALIGN.LEFT)
+
+    # 7 --- deployment diagram
+    s = blank_slide(prs)
+    _title(s, "UML deployment diagram")
+    srv = device(s, 60, 90, 330, 270, ":AppServer", instance=True)
+    execution_environment(s, 90, 150, 270, 180, ":JavaRuntime", instance=True)
+    artifact(s, 140, 230, 170, 60, "booking.jar", instance=True)
+    db = device(s, 560, 110, 190, 110, ":DbServer", instance=True)
+    communication_path(s, (srv.x + srv.w + DEPTH, db.cy), db, a_mult="*", b_mult="1")
+    sql = artifact(s, 570, 300, 170, 60, "schema.sql", instance=True)
+    deploy(s, sql, db)
+    comp = component(s, 790, 240, 150, 50, "BookingService")
+    jar = artifact(s, 800, 370, 130, 50, "booking.jar")
+    manifest(s, jar, comp)
+    label(s, 40, 440, 880, 60, "Nodes are cubes; «device» and «executionEnvironment» are keywords. Deployment: nest "
+          "the artifact in the node, or draw a dashed arrow with an open head and «deploy» from the artifact to "
+          "the node. Communication path: solid line. «manifest»: from the artifact to the component it embodies.",
+          11, align=PP_ALIGN.LEFT)
 
     prs.save(out_path)
     return out_path

@@ -12,13 +12,18 @@
 %   filled head = Triangle, same length and width as the open head
 %   hollow triangle (generalization, realization) is a separate, larger tip
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{uml-tikz}[2026/11/26 v1.0 UML 2.5.1 styles for TikZ]
+\ProvidesPackage{uml-tikz}[2026/11/26 v1.1 UML 2.5.1 styles for TikZ]
 \RequirePackage{tikz}
-\usetikzlibrary{arrows.meta, shapes.geometric, shapes.multipart, calc, decorations.markings}
+\usetikzlibrary{arrows.meta, shapes.geometric, shapes.multipart, calc, decorations.markings, fit}
 
 % Sizes. Open and filled heads share length and width on purpose.
 \newcommand{\umlheadlength}{1.9mm}
 \newcommand{\umlheadwidth}{1.7mm}
+% Ball (provided interface) and socket (required interface); the socket is larger so that it wraps the ball
+\newcommand{\umlballradius}{1.1mm}
+\newcommand{\umlsocketradius}{1.8mm}
+% Depth of the perspective cube of a node
+\newcommand{\umlnodedepth}{2mm}
 
 \tikzset{
   % ------------------------------------------------------------ picture
@@ -65,6 +70,45 @@
   % Use cases: «include» from base to included, «extend» from extension to extended (§18.1.4)
   uml include/.style={uml dependency},
   uml extend/.style={uml dependency},
+  % ------------------------------------------------------------ component diagram
+  % Component: classifier rectangle with the keyword «component» and/or the component icon in the
+  % right hand corner (§11.6.4, Fig. 11.39). uml component = box with icon; write the keyword with \umlname[component]{...}
+  uml component icon/.style={path picture={
+      \coordinate (uml@icon) at ($(path picture bounding box.north east)+(-1.1mm,-1.1mm)$);
+      \draw[solid, line width=0.35pt, fill=white] ($(uml@icon)+(-2.2mm,-2.9mm)$) rectangle (uml@icon);
+      \draw[solid, line width=0.35pt, fill=white] ($(uml@icon)+(-2.9mm,-1.1mm)$) rectangle ($(uml@icon)+(-1.5mm,-0.5mm)$);
+      \draw[solid, line width=0.35pt, fill=white] ($(uml@icon)+(-2.9mm,-2.4mm)$) rectangle ($(uml@icon)+(-1.5mm,-1.8mm)$);}},
+  uml component/.style={uml box, uml component icon, inner xsep=5mm, minimum height=9mm},
+  % Port: small square overlapping the boundary (§11.3.4, Fig. 11.11); place it on an anchor of the border
+  uml port/.style={draw, rectangle, fill=white, inner sep=0pt, minimum size=1.8mm},
+  % Provided interface: circle ("ball", "lollipop") on a solid line (§10.4.4, Fig. 10.8). Required: \umlsocket
+  uml ball/.style={draw, circle, fill=white, inner sep=0pt, minimum size=2*\umlballradius},
+  % Connector (assembly or delegation): solid line like an association, no head (§11.2.4, Fig. 11.47, 11.48).
+  % UML 2.5.1 defines neither an arrowhead nor a keyword «delegate» for a delegation connector.
+  uml connector/.style={-},
+  uml delegation/.style={-},
+  % ------------------------------------------------------------ deployment diagram
+  % Node: perspective view of a cube (§19.2.4, §19.4.4, Fig. 19.3). Edges end at the front face.
+  uml node/.style={draw, rectangle, fill=white, inner sep=1.2mm, align=center,
+    append after command={\pgfextra{\begin{pgfinterruptpath}
+      \draw[solid, fill=white] (\tikzlastnode.north west) -- ++(\umlnodedepth,\umlnodedepth)
+        -| ($(\tikzlastnode.south east)+(\umlnodedepth,\umlnodedepth)$) -- (\tikzlastnode.south east)
+        -- (\tikzlastnode.north east) -- cycle;
+      \draw[solid] (\tikzlastnode.north east) -- ++(\umlnodedepth,\umlnodedepth);
+    \end{pgfinterruptpath}}}},
+  % Artifact: class rectangle with the keyword «artifact» and/or a document icon (§19.3.4, Fig. 19.9)
+  uml artifact icon/.style={path picture={
+      \coordinate (uml@icon) at ($(path picture bounding box.north east)+(-1.1mm,-1.1mm)$);
+      \draw[solid, line width=0.35pt, fill=white] ($(uml@icon)+(-2.2mm,-2.9mm)$) -- ($(uml@icon)+(-2.2mm,0mm)$)
+        -- ($(uml@icon)+(-0.8mm,0mm)$) -- ($(uml@icon)+(0mm,-0.8mm)$) -- ($(uml@icon)+(0mm,-2.9mm)$) -- cycle;
+      \draw[solid, line width=0.35pt] ($(uml@icon)+(-0.8mm,0mm)$) |- ($(uml@icon)+(0mm,-0.8mm)$);}},
+  uml artifact/.style={uml box, uml artifact icon, inner xsep=5mm, minimum height=9mm},
+  % Deployment: dashed, open head at the deployment target, «deploy» as a label (§19.2.4, Fig. 19.3)
+  uml deploy/.style={uml dependency},
+  % Manifestation: dashed, open head at the manifested element, «manifest» as a label (§19.3.4, Fig. 19.10)
+  uml manifest/.style={uml dependency},
+  % CommunicationPath: an association between nodes, solid line (§19.4.4, Fig. 19.12, 19.15)
+  uml communication path/.style={-},
   % ------------------------------------------------------------ nodes
   uml label/.style={font=\sffamily\tiny, inner sep=0.4mm},
   % simple class or object box; for compartments use uml class
@@ -129,5 +173,22 @@
   \begin{scope}[shift={(#1)}]
     \draw (0,0) -- (0,-0.8) (-0.9,-0.8) -- (0.9,-0.8) (-0.9,-0.8) -- (-0.9,-1.8) (0,-0.8) -- (0,-1.8) (0.9,-0.8) -- (0.9,-1.8);
   \end{scope}}
+
+% Required interface: half circle ("socket") on a solid line, open on the side away from the classifier
+% that requires the interface (§10.4.4, Fig. 10.10, 11.40).
+% \umlsocket{id}{centre}{direction in which the socket is open, in degrees}
+% defines (id) at the centre and (id back) where the line from the classifier ends.
+% Ball-and-socket: put a `uml ball` node at the same centre (§11.2.4, Fig. 11.8).
+\newcommand{\umlsocket}[3]{%
+  \coordinate (#1) at (#2);
+  \coordinate (#1 back) at ($(#1)+({#3+180}:\umlsocketradius)$);
+  \draw[solid] ($(#1)+({#3+90}:\umlsocketradius)$) arc[start angle={#3+90}, end angle={#3+270}, radius=\umlsocketradius];}
+% Container from corner to corner with the name centred at the top: a component with its internal
+% structure (§11.6.4, Fig. 11.47) or a node with nested nodes and artifacts (§19.4.4, Fig. 19.12).
+% Draw it before its contents. \umlcontainer[style]{id}{corner}{opposite corner}{name}
+% defines (id) and (id title); default style: uml box.
+\newcommand{\umlcontainer}[5][uml box]{%
+  \node[#1, fit={(#3) (#4)}, inner sep=0pt] (#2) {};
+  \node[anchor=north, inner sep=1.2mm, align=center] (#2 title) at (#2.north) {#5};}
 
 \endinput

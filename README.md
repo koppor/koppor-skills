@@ -19,7 +19,7 @@ written to be agent-agnostic and reusable by anyone.
 | `tools` | [`run-with-gg`](skills/tools/run-with-gg/SKILL.md) | Run Java, Node.js, Gradle, **JBang** scripts and catalogs, or any GitHub release binary or jar without installing it, with **gg.cmd**. |
 | `git` | [`magic-merge-commit`](skills/git/magic-merge-commit/SKILL.md) | Fix merge conflicts of a stacked pull request after its base branch was **squash-merged** into `main`, with a "magic" merge commit built by **jbang**. |
 | `notations` | [`fmc`](skills/notations/fmc/SKILL.md) | Draw **FMC block diagrams** (agents, storages, channels, accesses) as native **PowerPoint** shapes with **python-pptx**, from a `.pptx` stencil or a Python library, exactly as on the FMC reference sheet. |
-| `notations` | [`uml`](skills/notations/uml/SKILL.md) | Draw and check **UML 2.5.1** diagrams (class, object, sequence, activity, state machine, use case, communication) with the right arrowheads, triangles, and diamonds: checklist with spec clauses, **TikZ** styles, and a **python-pptx** library. |
+| `notations` | [`uml`](skills/notations/uml/SKILL.md) | Draw and check **UML 2.5.1** diagrams (class, object, sequence, activity, state machine, use case, communication, component, deployment) with the right arrowheads, triangles, and diamonds: checklist with spec clauses, **TikZ** styles, and a **python-pptx** library. |
 | `jabref` | _(planned)_ | BibTeX/biblatex management, `jabkit`, PDF → BibTeX. |
 | `research` | _(planned)_ | Literature and research-workflow helpers. |
 

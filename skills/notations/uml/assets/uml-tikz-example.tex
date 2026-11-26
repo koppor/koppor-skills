@@ -163,4 +163,77 @@ Notation: OMG UML 2.5.1 (formal/17-12-05). Clause and figure next to each elemen
   \node[uml label, anchor=south] at (25,2.2) {1: confirm(b)};
 \end{tikzpicture}
 
+\clearpage
+\demo{Component diagram, black-box view (§10.4.4, §11.3.4, §11.6.4; Fig.\ 10.8, 10.10, 11.11, 11.39, 11.40, 11.46)}
+\begin{tikzpicture}[uml]
+  % keyword and icon; provided interface = ball, required interface = socket, open away from the component
+  \node[uml component] (bs) at (0,0) {\umlname[component]{BookingService}};
+  \node[uml ball, label={[uml label]above:Booking}] (bk) at (-30,0) {};
+  \draw (bs.west) -- (bk);
+  \umlsocket{nf}{30,0}{0}
+  \node[uml label, above=1.6mm] at (nf) {Notification};
+  \draw (bs.east) -- (nf back);
+  % wiring between components: dependency from the socket to the ball (Fig. 11.46)
+  \node[uml component] (no) at (82,0) {\umlname[component]{Notifier}};
+  \node[uml ball, label={[uml label]above:Notification}] (np) at (56,0) {};
+  \draw (no.west) -- (np);
+  \draw[uml dependency] (nf) -- (np);
+  % keyword only, icon only, general dependency (Fig. 11.39), port with its name (Fig. 11.11)
+  \node[uml box, minimum height=9mm] (cal) at (0,-18) {\umlname[component]{Calendar}};
+  \draw[uml dependency] (bs) -- (cal);
+  \node[anchor=west, uml label] at ($(cal.east)+(1,0)$) {keyword only};
+  \node[uml component] (pay) at (82,-18) {\textbf{Payment}};
+  \node[anchor=west, uml label] at ($(pay.east)+(1,0)$) {icon only};
+  \node[uml port, label={[uml label]above left:p}] (pp) at (pay.west) {};
+  \node[uml ball, label={[uml label]above:Checkout}] (pb) at (56,-18) {};
+  \draw (pp) -- (pb);
+\end{tikzpicture}
+
+\demo{Component diagram, internal structure (§11.2.4, §11.3.4, §11.6.4; Fig.\ 11.8, 11.47). Connectors are plain solid lines.}
+\begin{tikzpicture}[uml]
+  \umlcontainer[uml box, uml component icon]{app}{0,0}{120,-38}{\umlname[component]{BookingApp}}
+  \draw (app.west |- app title.south) -- (app.east |- app title.south);
+  \node[uml label, anchor=north] at (app title.south) {internal structure};
+  \node[uml component] (bs) at (40,-25) {\umlname[component]{:BookingService}};
+  \node[uml component] (no) at (97,-25) {\umlname[component]{:Notifier}};
+  \node[uml port] (p0) at (app.west |- bs) {};
+  \node[uml port] (p1) at (bs.west) {};
+  \node[uml port] (p2) at (bs.east) {};
+  \node[uml port] (p3) at (no.west) {};
+  % provided interface of the whole component, outside
+  \node[uml ball, label={[uml label]above:Booking}] (ext) at (-12,-25) {};
+  \draw (p0) -- (ext);
+  % delegation connector: from the port on the boundary to the ball of the part
+  \node[uml ball, label={[uml label]above:Booking}] (ib) at (9,-25) {};
+  \draw (ib) -- (p1);
+  \draw[uml delegation] (p0) -- (ib);
+  % assembly connector in ball-and-socket notation between two simple ports
+  \node[uml ball, label={[uml label, label distance=0.8mm]above:Notification}] (ab) at (72,-25) {};
+  \umlsocket{as}{72,-25}{0}
+  \draw[uml connector] (p2) -- (as back);
+  \draw[uml connector] (p3) -- (ab);
+\end{tikzpicture}
+
+\demo{Deployment diagram (§19.2.4, §19.3.4, §19.4.4; Fig.\ 19.2, 19.3, 19.9, 19.10, 19.12, 19.15)}
+\begin{tikzpicture}[uml]
+  % nodes as cubes, drawn before their contents; deployment by nesting needs no label
+  \umlcontainer[uml node]{srv}{0,0}{58,-38}{\umlkw{device}\\\umlinstance{}{AppServer}}
+  \umlcontainer[uml node]{rt}{5,-9}{51,-34}{\umlkw{executionEnvironment}\\\umlinstance{}{JavaRuntime}}
+  \node[uml artifact] (jar) at (28,-26) {\umlkw{artifact}\\\underline{booking.jar}};
+  \umlcontainer[uml node]{db}{88,-6}{122,-22}{\umlkw{device}\\\umlinstance{}{DbServer}}
+  % communication path: solid line, multiplicities as on an association
+  \draw[uml communication path] ($(srv.east |- db)+(\umlnodedepth,0)$) -- (db.west)
+     node[pos=0.12, above, uml label] {*} node[pos=0.88, above, uml label] {1};
+  % deployment drawn outside the node: dashed, open head at the node, «deploy»
+  \node[uml artifact] (sql) at (105,-40) {\umlkw{artifact}\\\underline{schema.sql}};
+  \draw[uml deploy] (sql) -- node[right, uml label] {\umlkw{deploy}} (db);
+\end{tikzpicture}
+\qquad
+\begin{tikzpicture}[uml]
+  % manifestation: from the artifact to the element it embodies (Fig. 19.10)
+  \node[uml component] (c) at (0,0) {\umlname[component]{BookingService}};
+  \node[uml artifact] (a) at (0,-24) {\umlname[artifact]{booking.jar}};
+  \draw[uml manifest] (a) -- node[right, uml label] {\umlkw{manifest}} (c);
+\end{tikzpicture}
+
 \end{document}

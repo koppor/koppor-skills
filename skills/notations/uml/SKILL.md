@@ -3,13 +3,14 @@ name: uml
 description: >-
   Draw and check UML 2.5.1 diagrams (class diagram, object diagram, sequence
   diagram, activity diagram, state machine, use case diagram, communication
-  diagram) exactly as the OMG specification defines them: arrowheads open or
-  filled, hollow triangles, aggregation and composition diamonds, navigability,
-  dashed or solid lines. Comes with a notation checklist citing the spec clause
-  and figure, TikZ styles for LaTeX, and a python-pptx library for native
-  PowerPoint shapes. Use when a slide, deck, .pptx, LaTeX/TikZ document, or
-  figure needs a UML diagram, or when a UML diagram must be checked for
-  notation errors.
+  diagram, component diagram, deployment diagram) exactly as the OMG
+  specification defines them: arrowheads open or filled, hollow triangles,
+  aggregation and composition diamonds, navigability, dashed or solid lines,
+  ball and socket, ports, nodes, artifacts. Comes with a notation checklist
+  citing the spec clause and figure, TikZ styles for LaTeX, and a python-pptx
+  library for native PowerPoint shapes. Use when a slide, deck, .pptx,
+  LaTeX/TikZ document, or figure needs a UML diagram, or when a UML diagram
+  must be checked for notation errors.
 license: MIT
 ---
 
@@ -38,6 +39,7 @@ filled although the text asks for an open one: Fig. 7.18 (generic dependency) an
 Fig. 18.3 («extend», "a dashed arrow with an open arrowhead", §18.1.4 p. 642). The other
 dependency figures (Fig. 7.20, 10.11, 18.4) and the import, merge, and profile application
 notations ("a dashed arrow with an open arrowhead", §7.4.4.3, §12.2.4, §12.3.4) draw it open.
+More such figures are listed below the component and the deployment checklist.
 
 ## Arrowheads
 
@@ -45,9 +47,9 @@ Three different line ends occur, and they must not be mixed up:
 
 | Line end | Looks like | Used for |
 | --- | --- | --- |
-| Open head | Two strokes meeting at the tip, nothing between them (`→`) | Navigable association end, dependency (`«use»`, `«include»`, `«extend»`), activity edge, transition, asynchronous message, reply, create message |
+| Open head | Two strokes meeting at the tip, nothing between them (`→`) | Navigable association end, dependency (`«use»`, `«include»`, `«extend»`), deployment (`«deploy»`), manifestation (`«manifest»`), activity edge, transition, asynchronous message, reply, create message |
 | Filled head | Solid black triangle | Synchronous message (a reply may also use it) |
-| Hollow triangle | Closed triangle outline, white inside, larger | Generalization (solid line), realization (dashed line) |
+| Hollow triangle | Closed triangle outline, white inside, larger | Generalization (solid line), realization and component realization (dashed line) |
 
 - **An open head is two strokes, not a hollow triangle.** A hollow triangle on a
   dependency or an association turns it into a realization or generalization.
@@ -161,6 +163,59 @@ Never read a plain line as "not navigable".
 | «extend» | Dashed, open head, **from the extending use case to the extended one**, condition in a note. | Arrow pointing like «include». | §18.1.4 p. 642, Fig. 18.3 (head as in the text) |
 | Generalization | Solid line, hollow triangle at the general actor or use case. | Open head. | §9.2.4.2 |
 
+### Component diagram
+
+| Element | Drawn as | Typical mistake | Spec (§, Fig.) |
+| --- | --- | --- | --- |
+| Component | Classifier rectangle with the keyword `«component»` above the bold name. Optionally the component icon in the right hand corner: a rectangle with two smaller rectangles protruding from its left side. With the icon, the keyword may be left out. | Neither keyword nor icon (that is a class). | §11.6.4 p. 210, Fig. 11.39 |
+| Provided interface | Circle (ball, lollipop) labelled with the interface name, attached by a **solid** line to the component or to one of its ports. | Dashed line; an arrowhead on the line. | §10.4.4 p. 172, §11.6.4, Fig. 10.8, 11.40 |
+| Required interface | Half circle (socket) labelled with the interface name, attached by a **solid** line. The text says only "half-circle"; in every figure it is open on the side **away from** the component that requires the interface. | Socket open toward its own component; ball and socket swapped. | §10.4.4 p. 172, Fig. 10.10, 11.40 |
+| Interface as a rectangle | `«interface»` classifier rectangle, to show operations. The component realizes it with a dashed line and a hollow triangle, or uses it with a dashed line, an open head, and `«use»`. | Solid lines; one head style for both. | §11.6.4 p. 210, §10.4.4, Fig. 10.11, 11.43 |
+| Dependency between components | Dashed line, open head. | Solid line. | §11.6.5 p. 211, Fig. 11.39 |
+| Wiring between components | Dependency (dashed line, open head) from the socket of one component to the ball of the other. | Ball pushed into the socket between two component definitions: that is the notation of an assembly connector between ports of parts, see below. | §11.6.3 p. 210, §10.4.4 p. 172, Fig. 11.46 |
+| Port | Small square overlapping the boundary of the classifier or part (or inside it), the name near it: `name : Type`, `~Type` for a conjugated port. Ball and socket of the port are attached to the square. | A circle; a square away from the boundary. | §11.3.4 p. 191, Fig. 11.11 |
+| Internal structure | Compartment named "internal structure" below the name compartment. A part is a box with a solid outline and `name : Type` or `:Type`; a role that is not owned by composition has a dashed outline. A part typed by a component has `«component»` above its name. | Parts named without the colon: they then read as definitions, not as parts. | §11.2.4 p. 185-186, Fig. 11.2, 11.47 |
+| Connector | **Solid** line between parts or ports, "similar notation to that for Association"; name and multiplicities as on an association. | Dashed line. | §11.2.4 p. 186, Fig. 11.4, 11.5 |
+| Assembly connector, ball-and-socket | Optional: the ball of the providing port sits in the socket of the requiring port, each attached by a solid line. Only between **simple ports** (one provided or required interface). | Used for parts without ports or for ports with several interfaces. | §11.2.4 p. 186, Fig. 11.4, 11.8, 11.47 |
+| Delegation connector | **Solid** line from a port on the boundary to a part, to a port of a part, or to its ball or socket. No arrowhead, no keyword. | Arrow with an open head and `«delegate»` (see below). | §11.2.4 p. 186, §11.3.3 p. 191, Fig. 11.47, 11.48 |
+| Component realization | Dashed line, hollow triangle at the component, from each realizing classifier. | Open head. | §11.6.4 p. 211, Fig. 11.44 |
+| Optional compartments | "provided interfaces", "required interfaces", "realizations", "artifacts", "packaged elements": the name centred at the top of the compartment, entries as a list or as nested symbols. | | §11.6.4 p. 210-211, Fig. 11.41, 11.42, 11.45 |
+
+**Delegation has no arrow in UML 2.5.1.** The text asks for "normal Connector notation for
+assembly or delegation" (§11.2.4), Fig. 11.47 and 11.48 draw plain lines, and `«delegate»`
+is neither in the keyword table (Annex C, Table C.1) nor anywhere else in the document.
+Whether a connector delegates follows from where it ends: on a port that is not on a part
+(§11.8.10.4). The arrow with `«delegate»` is common in tools and textbooks; if a diagram
+uses it, it uses a stereotype of its own, which §11.2.4 allows above a connector name.
+
+Figures that disagree with the text: Fig. 11.43 prints the component icon on the two
+`«interface»` rectangles, and Fig. 11.11 draws `«use»` on a solid line without a head; a
+usage is a dependency, so dashed with an open head (§7.7.4, Fig. 10.11). Fig. 11.46 marks
+an inherited interface with a slash (`/OrderableItem`), which §10.4.4 permits but
+discourages in favour of the caret (`^OrderableItem`, Fig. 10.9).
+
+### Deployment diagram
+
+| Element | Drawn as | Typical mistake | Spec (§, Fig.) |
+| --- | --- | --- | --- |
+| Node | "Perspective view of a cube" with the name inside. An instance is `:AppServer`, underlined. | Flat rectangle. | §19.2.4 p. 654, §19.4.4 p. 658, Fig. 19.3, 19.14 |
+| Device | Node with the keyword `«device»`. | | §19.4.4 p. 658, Fig. 19.12 |
+| Execution environment | Node with the keyword `«executionEnvironment»` (one word), usually nested in a device. | `«execution environment»`. | §19.4.4 p. 658, Table C.1 p. 747, Fig. 19.12, 19.13 |
+| Nested nodes | Node cube drawn inside a node cube. The internal structure of a node consists of nodes only. | | §19.4.3 p. 658, Fig. 19.12 |
+| Artifact | Class rectangle with the keyword `«artifact»`, or an icon such as the document icon; the figures show the icon in the top right corner, with the keyword or alone. The name of an instance is underlined; the underline may be omitted. | Folded corner on the whole box (that is a comment). | §19.3.4 p. 657, Fig. 19.9, 19.15 |
+| Deployment by nesting | Artifact drawn inside the node, or listed there by name. No label is needed. | | §19.2.4 p. 654, §19.4.4 p. 659, Fig. 19.2, 19.4 |
+| Deployment as an arrow | **Dashed** line, **open** head, `«deploy»`, from the artifact to the node. | Head at the artifact; solid line. | §19.2.4 p. 654, §19.4.4 p. 659, Fig. 19.3, 19.15 |
+| Communication path | **Solid** line between nodes, as an association; multiplicities at the ends as needed. | Dashed line; arrowheads to show a data flow. | §19.4.4 p. 659, Fig. 19.12, 19.15 |
+| Manifestation | **Dashed** line, **open** head, `«manifest»`, from the artifact to the element it embodies, e.g. a component. | Head at the artifact. | §19.3.4 p. 657, Fig. 19.10 |
+| Dependency between artifacts | Dashed line, open head, also inside a node. | | §19.2.5, Fig. 19.2 |
+| Deployment specification | Classifier rectangle with the keyword `«deployment spec»`, attached with a dependency arrow. | | §19.2.4 p. 654, Fig. 19.5, 19.6 |
+
+§19.2.4 puts a colon before the name of every deployment target; Fig. 19.15 shows nodes at
+type level as `AppServer` and `DBServer`, bold, without colon and underline. Use the colon
+and the underline for instances, the bold name for types, as for classes and objects.
+The figures of clause 19 print instance names bold and underlined; §9.8.4 and §19.3.4 ask
+for the underline only.
+
 ### Applies to every diagram
 
 - **Guillemets** `«` `»` mark keywords and stereotypes, not `<<` `>>` (Annex C, p. 745).
@@ -175,10 +230,13 @@ Never read a plain line as "not navigable".
 style (`uml association`, `uml navigable`, `uml navigable both`, `uml navigable one way`,
 `uml dependency`, `uml generalization`, `uml realization`, `uml aggregation`,
 `uml composition`, `uml flow`, `uml sync`, `uml async`, `uml reply`, `uml create`,
-`uml include`, `uml extend`; nodes `uml class`, `uml class2`, `uml box`, `uml usecase`,
-`uml action`, `uml state`, `uml initial`, `uml final`, `uml flow final`,
-`uml decision`, `uml bar`, pic `uml actor`) plus macros `\umlinstance`, `\umlname`,
-`\umlkw`, `\umllifeline`, `\umlactivation`, `\umlfragment`, `\umlnote`, `\umlrake`.
+`uml include`, `uml extend`, `uml connector`, `uml delegation`, `uml deploy`,
+`uml manifest`, `uml communication path`; nodes `uml class`, `uml class2`, `uml box`,
+`uml usecase`, `uml action`, `uml state`, `uml initial`, `uml final`, `uml flow final`,
+`uml decision`, `uml bar`, `uml component`, `uml component icon`, `uml port`, `uml ball`,
+`uml node`, `uml artifact`, `uml artifact icon`, pic `uml actor`) plus macros
+`\umlinstance`, `\umlname`, `\umlkw`, `\umllifeline`, `\umlactivation`, `\umlfragment`,
+`\umlnote`, `\umlrake`, `\umlsocket`, `\umlcontainer`.
 Open heads are `Straight Barb[length=1.9mm, width=1.7mm]`, filled heads
 `Triangle[length=1.9mm, width=1.7mm]`: the same size.
 [`assets/uml-tikz-example.tex`](assets/uml-tikz-example.tex) uses each of them once.
@@ -197,6 +255,26 @@ Open heads are `Straight Barb[length=1.9mm, width=1.7mm]`, filled heads
 Draw aggregation and composition **from the whole to the part**: the diamond is the start
 tip. The picture option `uml` sets 1 unit = 1 mm.
 
+Component and deployment diagrams:
+
+```latex
+\node[uml component] (svc) at (0,0) {\umlname[component]{BookingService}};
+\node[uml ball, label={[uml label]above:Booking}] (b) at (-30,0) {};   % provided interface
+\draw (svc.west) -- (b);
+\umlsocket{n}{30,0}{0}                    % required interface, open to the right (0 degrees)
+\draw (svc.east) -- (n back);
+\node[uml port] (p) at (svc.south) {};    % port on the boundary
+
+\umlcontainer[uml node]{srv}{0,-20}{60,-55}{\umlkw{device}\\\umlinstance{}{AppServer}}
+\node[uml artifact] (jar) at (30,-42) {\umlname[artifact]{booking.jar}};  % deployed by nesting
+```
+
+`\umlsocket{id}{centre}{angle}` draws the half circle open in the direction of the angle
+and defines `(id)` at its centre and `(id back)` for the line from the component; a
+`uml ball` at the same centre gives the ball-and-socket of an assembly connector.
+`\umlcontainer[style]{id}{corner}{corner}{name}` draws a component with room for its
+internal structure or a node with nested nodes and artifacts; draw it before its contents.
+
 Build the example with Docker (see the `compile-tex` skill for details), from the folder
 that holds both files:
 
@@ -211,9 +289,10 @@ docker run --rm -v "${PWD}:/work" -w /work texlive/texlive:latest latexmk -luala
 ## PowerPoint: python-pptx library
 
 [`scripts/uml_pptx.py`](scripts/uml_pptx.py) needs Python 3.9+ and `python-pptx`.
-Coordinates are points from the top left corner of the slide. `demo` writes a five-slide
+Coordinates are points from the top left corner of the slide. `demo` writes a seven-slide
 example deck (all relationships; class and object diagram; sequence; activity and state
-machine; use case and communication diagram), `check` lints any deck.
+machine; use case and communication diagram; component diagram; deployment diagram),
+`check` lints any deck.
 
 ```sh
 pip install python-pptx
@@ -258,12 +337,19 @@ prs.save("booking.pptx")
 | `state(internal=[...])`, `final_state`, `transition(a, b, guard="trigger [guard] / effect")` | State machine. |
 | `lifeline`, `actor_lifeline`, `activation`, `message(x1, x2, y, name, kind)`, `self_message`, `fragment` | Sequence diagram; `kind` is `sync`, `async`, `reply`, or `create`. |
 | `comm_lifeline`, `communication_message` | Communication diagram. |
+| `component(icon=, keyword=, compartment=)`, `port(owner, side)`, `provided_interface(owner, side, name)`, `required_interface(owner, side, name)` | Component with keyword and icon; port square on the boundary; ball and socket on a component or a port. `compartment="internal structure"` leaves room for parts. |
+| `assembly(requiring, providing)`, `connector`, `delegation(outer_port, inner)` | Ball-and-socket between two simple ports; plain connector; delegation as a solid line without head. Wiring between component definitions: `dependency(socket, ball)`. |
+| `node`, `device`, `execution_environment`, `artifact(icon=, keyword=, instance=)` | Deployment diagram: cube, with keyword; artifact with keyword and document icon. Draw a node before its contents. |
+| `deploy(artifact, node)`, `manifest(artifact, element)`, `communication_path(a, b)` | Dashed line with open head and `«deploy»` or `«manifest»`; solid line between nodes. |
 | `edge(a, b, via, dash, start, end)`, `label`, `group` | Anything else: polylines through `via` points, free text, PowerPoint group. |
 
 Every edge takes nodes or `(x, y)` points and ends on the outline of a node (rectangle,
 ellipse, or diamond). House style: set `uml.INK`, `uml.PAPER`, `uml.NODE_WIDTH`,
 `uml.EDGE_WIDTH`, `uml.HEAD_W`, `uml.HEAD_LEN`, `uml.TRIANGLE`, `uml.DIAMOND`,
 `uml.FONT`, `uml.MONO`, `uml.FONT_SIZE` before drawing.
+
+`check` reports sizes below zero, line ends without a UML meaning, open and filled heads
+of different size on one slide, and keywords written as `<<keyword>>`.
 
 ## What python-pptx and PowerPoint get wrong on their own
 
@@ -288,6 +374,37 @@ ellipse, or diamond). House style: set `uml.INK`, `uml.PAPER`, `uml.NODE_WIDTH`,
   `run.font.underline = True` and `bold = False`; a class name the opposite.
 - **Negative width or height.** python-pptx writes and reloads such a file, PowerPoint
   refuses to open it. `check` reports it.
+- **Freeform vertices are integers.** `build_freeform` rounds every point to its unit; an
+  arc of a few points across (the socket) gets corners. Pass a finer `scale`, as the
+  library does (1/100 pt).
+- **The cube preset shades its faces.** `MSO_SHAPE.CUBE` darkens the top and the side
+  face of the fill; the library draws the node from a rectangle and a polygon instead.
+
+## Other LaTeX packages for UML
+
+[How to draw UML diagrams](https://github.com/latextemplates/gadr-latex-packages/blob/main/uml-diagrams.md)
+in `latextemplates/gadr-latex-packages` compares the ready-made routes: PlantUML (`plantuml`
+package), `MetaUML`, `pgf-umlcd` and `pgf-umlsd`, `pst-uml`, tikz-uml, and Mermaid
+(`ltMermaid`). For each it has the same small examples (a sequence diagram, class
+relations, class visibility, components) with source and rendering in
+[`uml-diagrams/`](https://github.com/latextemplates/gadr-latex-packages/tree/main/uml-diagrams),
+what each needs to compile (engine, `--shell-escape`, external tools, the TeX Live Docker
+image), the lines of code per example, and pros and cons.
+
+- **Use that comparison** when the question is which package to take: the diagram should
+  be laid out automatically from a short text (PlantUML, Mermaid), the package has to be
+  in TeX Live or work without `--shell-escape`, or a document already uses one of them.
+- **Use `uml-tikz.sty`** when the notation has to be right element by element, when the
+  diagram type is outside those examples (activity, state machine, use case,
+  communication, deployment, internal structure with ports), when the diagram is part of
+  a larger TikZ picture, or when it should match a PowerPoint version drawn with
+  `uml_pptx.py`. It is a set of styles, not a layout engine: every position is given.
+- **Use both** by drawing with a package and checking the result against the checklists
+  above. The comparison rates effort and tooling, not conformance with UML 2.5.1, and the
+  packages have defaults of their own: in its renderings `pgf-umlsd` underlines lifeline
+  heads and draws `\mess` with an open head (asynchronous) where the other packages draw
+  the same call with a filled one, tikz-uml heads a lifeline `Alice:`, and all three
+  component examples put a ball into a socket between components without ports.
 
 ## Verify: render, enlarge, compare
 
@@ -318,6 +435,8 @@ The spec figures can be cut out of the spec PDF with PyMuPDF
 
 - OMG: *Unified Modeling Language (UML)*, version 2.5.1, formal/17-12-05, 2017.
   <https://www.omg.org/spec/UML/2.5.1/> (PDF: <https://www.omg.org/spec/UML/2.5.1/PDF>).
+- latextemplates: *How to draw UML diagrams*, a comparison of LaTeX packages for UML.
+  <https://github.com/latextemplates/gadr-latex-packages/blob/main/uml-diagrams.md>
 - Related skill: [`fmc`](../fmc/SKILL.md) for FMC block diagrams, whose arrowheads are
   all filled.
 
